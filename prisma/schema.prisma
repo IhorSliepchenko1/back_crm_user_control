@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
+enum Roles {
   USER
   ADMIN
 }
@@ -18,11 +18,22 @@ enum TaskStatus {
   DONE
 }
 
+model Role {
+  id          String   @id @default(uuid())
+  name        Roles    @unique()
+  descriptions String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  users       User[]   @relation("role_connections")
+
+  @@map("roles")
+}
+
 model User {
   id        String    @id @default(uuid())
   login     String    @unique()
   password  String
-  role      Role      @default(USER)
+  roles     Role[]    @relation("role_connections")
   projects  Project[]
   chatsId   Chat[]
   createdAt DateTime  @default(now()) @map("created_at")
