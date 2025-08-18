@@ -14,6 +14,7 @@ import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { ConfigService } from '@nestjs/config';
 import { Roles } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
+import { ApiResponse } from 'src/common/interfaces';
 
 @Injectable()
 export class AuthService {
@@ -27,21 +28,11 @@ export class AuthService {
   async register(
     res: Response,
     dto: RegisterDto,
-  ): Promise<ReturnType<typeof this.tokenService.auth>> {
-    const { login, password } = dto;
+  ): Promise<ApiResponse<{ accessToken: string }>> {
+    const { login, password, adminCode } = dto;
 
     if (!login || !password) {
       throw new ConflictException('Данные обязательны');
-    }
-
-    const defaultRole = await this.prismaService.role.findUnique({
-      where: {
-        name: this.configService.getOrThrow<Roles>('USER'),
-      },
-    });
-
-    if (!defaultRole) {
-      throw new ConflictException('Данные о роли не обнаружены');
     }
 
     const isUser = await this.prismaService.user.findUnique({
@@ -53,15 +44,31 @@ export class AuthService {
     }
 
     const hashPassword = await argon2.hash(password);
+    let rolesUser: Roles[] = [];
+
+    const isAdmin =
+      adminCode && adminCode === this.configService.getOrThrow('ADMIN_CODE');
+
+    if (isAdmin) {
+      const allRoles = await this.prismaService.role.findMany({
+        select: {
+          name: true,
+        },
+      });
+
+      allRoles.forEach((n) => (rolesUser as Roles[]).push(n.name));
+    } else {
+      rolesUser.push('USER');
+    }
 
     const user = await this.prismaService.user.create({
       data: {
         login,
         password: hashPassword,
         roles: {
-          connect: {
-            name: defaultRole?.name,
-          },
+          connect: rolesUser.map((name) => ({
+            name,
+          })),
         },
       },
 
@@ -73,13 +80,16 @@ export class AuthService {
     });
 
     const roles = user.roles.map((n) => n.name);
-    return this.tokenService.auth(res, user.id, user.login, roles);
+
+    const payload = { ...user, roles };
+
+    return this.tokenService.auth(res, payload);
   }
 
   async login(
     res: Response,
     dto: LoginDto,
-  ): Promise<ReturnType<typeof this.tokenService.auth>> {
+  ): Promise<ApiResponse<{ accessToken: string }>> {
     const { login, password } = dto;
     if (!login || !password) {
       throw new ConflictException('Данные обязательны');
@@ -108,7 +118,8 @@ export class AuthService {
       throw new UnauthorizedException('Не верный логин или пароль');
     }
     const roles = user.roles.map((n) => n.name);
-    return this.tokenService.auth(res, user.id, user.login, roles);
+    const payload = { ...user, roles };
+    return this.tokenService.auth(res, payload);
   }
 
   async validate(id: string): Promise<JwtPayload> {
@@ -130,19 +141,40 @@ export class AuthService {
     return user;
   }
 
-  async refresh(req: Request, res: Response) {
+  async refresh(
+    req: Request,
+    res: Response,
+  ): Promise<ApiResponse<{ accessToken: string }>> {
     const refreshToken = req.cookies['refreshToken'];
     if (!refreshToken) throw new UnauthorizedException('Нет refresh токена');
 
-    try {
-      const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
-        secret: this.configService.get('JWT_SECRET'),
-      });
+    const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 
-      const user = await this.validate(payload.id);
-      return this.tokenService.auth(res, user.id, user.login, user.roles);
-    } catch {
-      throw new UnauthorizedException('Refresh токен невалиден или протух');
+    if (!payload) {
+      throw new UnauthorizedException('Пользователь не авторизован');
     }
+
+    const userInfo = await this.prismaService.user.findUnique({
+      where: {
+        id: payload.id,
+      },
+
+      select: {
+        id: true,
+        login: true,
+        roles: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!userInfo) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+    const user = await this.validate(userInfo.id);
+
+    return this.tokenService.auth(res, user);
   }
 }

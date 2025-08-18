@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -13,7 +14,8 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { User } from './decorators/user.decorator';
 import { TokenService } from 'src/token/token.service';
-import { AuthRoles } from './decorators/auth-roles.decorator';
+import type { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
+import { Auth } from './decorators/auth.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -40,21 +42,27 @@ export class AuthController {
     return await this.authService.login(res, dto);
   }
 
+  @Auth()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
     return await this.tokenService.logout(res);
   }
 
-  @AuthRoles('USER')
+  @Auth()
   @Get('me')
-  async findOne(@User() user: { id: string; roles: string[]; login: string }) {
+  @HttpCode(HttpStatus.OK)
+  async findOne(@User() user: JwtPayload) {
     return user;
   }
 
-  @AuthRoles()
+  @Auth()
   @Post('refresh')
-  async refreshTokens(req: Request, res: Response) {
+  @HttpCode(HttpStatus.OK)
+  async refreshTokens(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     return await this.authService.refresh(req, res);
   }
 }

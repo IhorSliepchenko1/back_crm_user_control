@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Response, Request } from 'express';
+import { Response } from 'express';
 import parse from 'parse-duration';
 import { ApiResponse } from 'src/common/interfaces';
 import { isDev } from 'src/common/utils/is-dev.utils';
 import { buildResponse } from 'src/common/build-response';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
-import { Tokens } from 'src/token/interfaces/token.interfaces';
 import { Roles } from '@prisma/client';
 
 @Injectable()
@@ -32,26 +31,17 @@ export class TokenService {
 
   auth(
     res: Response,
-    id: string,
-    login: string,
-    roles: Roles[],
-  ): { accessToken: string; refreshToken: string } {
+    payload: JwtPayload,
+  ): ApiResponse<{ accessToken: string }> {
+    const { id, login, roles } = payload;
     const { accessToken, refreshToken } = this.generateTokens(id, login, roles);
-
-    this.setTokenCookie(
-      res,
-      'refreshToken',
-      refreshToken,
-      this.JWT_REFRESH_TOKEN_TTL,
+    this.setRefreshTokenCookie(res, refreshToken, this.JWT_REFRESH_TOKEN_TTL);
+    return buildResponse<{ accessToken: string }>(
+      'Система выдала новый access-token, никому его не сообщайте',
+      {
+        accessToken,
+      },
     );
-
-    this.setTokenCookie(
-      res,
-      'accessToken',
-      accessToken,
-      this.JWT_ACCESS_TOKEN_TTL,
-    );
-    return { accessToken, refreshToken };
   }
 
   private signToken(payload: JwtPayload, ttl: string) {
@@ -61,9 +51,8 @@ export class TokenService {
     });
   }
 
-  private generateTokens(id: string, login: string, roles: Roles[]): Tokens {
+  private generateTokens(id: string, login: string, roles: Roles[]) {
     const payload: JwtPayload = { id, roles, login };
-
     const accessToken = this.signToken(payload, this.JWT_ACCESS_TOKEN_TTL);
     const refreshToken = this.signToken(payload, this.JWT_REFRESH_TOKEN_TTL);
 
@@ -73,26 +62,20 @@ export class TokenService {
     };
   }
 
-  private setTokenCookie(
-    res: Response,
-    tokenName: 'refreshToken' | 'accessToken',
-    value: string,
-    ttl: string | 0,
-  ) {
+  private setRefreshTokenCookie(res: Response, value: string, ttl: string | 0) {
     const maxAge = typeof ttl === 'string' ? (parse(ttl) as number) : 0;
 
-    return res.cookie(tokenName, value, {
+    return res.cookie('refreshToken', value, {
       httpOnly: true,
       domain: this.COOKIE_DOMAIN,
       secure: !isDev(this.configService),
-      sameSite: 'lax',
+      sameSite: 'none',
       maxAge,
     });
   }
 
   async logout(res: Response): Promise<ApiResponse> {
-    this.setTokenCookie(res, 'refreshToken', '', 0);
-    this.setTokenCookie(res, 'accessToken', '', 0);
+    this.setRefreshTokenCookie(res, '', 0);
     return buildResponse('Выполнен выход из системы');
   }
 }
