@@ -8,7 +8,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import type { Response } from 'express';
+import type { Response, Request } from 'express';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { User } from './decorators/user.decorator';
@@ -50,5 +50,11 @@ export class AuthController {
   @Get('me')
   async findOne(@User() user: { id: string; roles: string[]; login: string }) {
     return user;
+  }
+
+  @AuthRoles()
+  @Post('refresh')
+  async refreshTokens(req: Request, res: Response) {
+    return await this.authService.refresh(req, res);
   }
 }

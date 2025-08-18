@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import parse from 'parse-duration';
 import { ApiResponse } from 'src/common/interfaces';
 import { isDev } from 'src/common/utils/is-dev.utils';
@@ -30,7 +30,12 @@ export class TokenService {
     this.JWT_SECRET = configService.getOrThrow<string>('JWT_SECRET');
   }
 
-  auth(res: Response, id: string, login: string, roles: Roles[]): ApiResponse {
+  auth(
+    res: Response,
+    id: string,
+    login: string,
+    roles: Roles[],
+  ): { accessToken: string; refreshToken: string } {
     const { accessToken, refreshToken } = this.generateTokens(id, login, roles);
 
     this.setTokenCookie(
@@ -46,7 +51,7 @@ export class TokenService {
       accessToken,
       this.JWT_ACCESS_TOKEN_TTL,
     );
-    return buildResponse('Вход разрешён');
+    return { accessToken, refreshToken };
   }
 
   private signToken(payload: JwtPayload, ttl: string) {
