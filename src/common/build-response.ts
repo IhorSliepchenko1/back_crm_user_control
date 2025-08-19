@@ -7,6 +7,6 @@ export function buildResponse<T = undefined>(
   return {
     success: true,
     message,
-    ...(data !== undefined && { data }),
+    ...(data !== undefined && data),
   };
 }

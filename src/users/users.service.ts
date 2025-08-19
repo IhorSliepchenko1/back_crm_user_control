@@ -6,6 +6,8 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UsersDto } from './dto/users.dto';
 import { RoleChangeDto } from './dto/role-change.dto';
+import { buildResponse } from 'src/common/build-response';
+import { Roles } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -14,24 +16,61 @@ export class UsersService {
   async users(dto: UsersDto) {
     const { page, limit } = dto;
 
+    const currentPage = page ?? 1;
+    const pageSize = limit ?? 10;
+
     const [data, total] = await this.prismaService.$transaction([
       this.prismaService.user.findMany({
-        skip: page && limit ? (page - 1) * limit : 0,
-        take: limit ?? 10,
-
+        skip: (currentPage - 1) * pageSize,
+        take: pageSize,
         orderBy: { createdAt: 'desc' },
       }),
 
       this.prismaService.user.count(),
     ]);
 
-    return {
+    return buildResponse('', {
       data,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    });
+  }
+
+  private async validateRolesExist(
+    names: Roles[],
+    id: string,
+    status: 'add' | 'delete',
+  ) {
+    const roles = (
+      await this.prismaService.role.findMany({
+        where: { name: { in: names } },
+      })
+    ).map((r) => r.name);
+
+    if (roles.length !== names.length) {
+      throw new ConflictException('Вы передали некорректный массив ролей');
+    }
+
+    if (status === 'delete') {
+      await this.prismaService.user.update({
+        where: { id },
+        data: {
+          roles: { disconnect: roles.map((name) => ({ name })) },
+        },
+      });
+    }
+
+    if (status === 'add') {
+      await this.prismaService.user.update({
+        where: { id },
+        data: {
+          roles: { connect: roles.map((name) => ({ name })) },
+        },
+      });
+    }
+
+    return true;
   }
 
   async roleChange(dto: RoleChangeDto, id: string) {
@@ -54,41 +93,22 @@ export class UsersService {
       throw new NotFoundException('Пользователь не найден');
     }
 
-    if (user.roles.length === 1) {
-      throw new ConflictException(
-        'Удалить роль можно при наличии более 1й роли.',
-      );
-    }
-
     const { deleteRoles, addRoles } = dto;
 
-    if (deleteRoles && deleteRoles.length >= 1) {
-      const rolesDelete = await this.prismaService.role.findMany({
-        where: {
-          name: {
-            in: deleteRoles,
-          },
-        },
-      });
-
-      if (rolesDelete.length !== deleteRoles.length) {
-        throw new ConflictException('Вы передали некоректный массив ролей');
+    if (deleteRoles?.length) {
+      if (user.roles.length === 1) {
+        throw new ConflictException(
+          'Удалить роль можно при наличии более 1й роли.',
+        );
       }
 
-      const actualRolesList = user.roles.filter(
-        (r) => !deleteRoles.includes(r.name),
-      );
-
-      await this.prismaService.user.update({
-        where: { id },
-        data: {
-          roles: {
-            connect: actualRolesList.map((r) => ({ name: r.name })),
-          },
-        },
-      });
-
-      return 
+      await this.validateRolesExist(deleteRoles, id, 'delete');
     }
+
+    if (addRoles?.length) {
+      await this.validateRolesExist(addRoles, id, 'add');
+    }
+
+    return buildResponse('Роли изменены');
   }
 }

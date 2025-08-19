@@ -31,6 +31,8 @@ export class AuthService {
   ): Promise<ApiResponse<{ accessToken: string }>> {
     const { login, password, adminCode } = dto;
 
+    console.log(adminCode);
+
     if (!login || !password) {
       throw new ConflictException('Данные обязательны');
     }
@@ -44,10 +46,12 @@ export class AuthService {
     }
 
     const hashPassword = await argon2.hash(password);
-    let rolesUser: Roles[] = [];
+    const rolesUser: Roles[] = [];
 
     const isAdmin =
       adminCode && adminCode === this.configService.getOrThrow('ADMIN_CODE');
+
+    console.log(adminCode === this.configService.getOrThrow('ADMIN_CODE'));
 
     if (isAdmin) {
       const allRoles = await this.prismaService.role.findMany({
@@ -57,9 +61,13 @@ export class AuthService {
       });
 
       allRoles.forEach((n) => (rolesUser as Roles[]).push(n.name));
+
+      console.log(allRoles);
     } else {
       rolesUser.push('USER');
     }
+
+    console.log(rolesUser);
 
     const user = await this.prismaService.user.create({
       data: {
