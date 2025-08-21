@@ -31,8 +31,6 @@ export class AuthService {
   ): Promise<ApiResponse<{ accessToken: string }>> {
     const { login, password, adminCode } = dto;
 
-    console.log(adminCode);
-
     if (!login || !password) {
       throw new ConflictException('Данные обязательны');
     }
@@ -51,8 +49,6 @@ export class AuthService {
     const isAdmin =
       adminCode && adminCode === this.configService.getOrThrow('ADMIN_CODE');
 
-    console.log(adminCode === this.configService.getOrThrow('ADMIN_CODE'));
-
     if (isAdmin) {
       const allRoles = await this.prismaService.role.findMany({
         select: {
@@ -61,13 +57,9 @@ export class AuthService {
       });
 
       allRoles.forEach((n) => (rolesUser as Roles[]).push(n.name));
-
-      console.log(allRoles);
     } else {
       rolesUser.push('USER');
     }
-
-    console.log(rolesUser);
 
     const user = await this.prismaService.user.create({
       data: {
@@ -93,7 +85,6 @@ export class AuthService {
 
     return this.tokenService.auth(res, payload);
   }
-
   async login(
     res: Response,
     dto: LoginDto,
@@ -129,7 +120,6 @@ export class AuthService {
     const payload = { ...user, roles };
     return this.tokenService.auth(res, payload);
   }
-
   async validate(id: string): Promise<JwtPayload> {
     const userInfo = await this.prismaService.user.findUnique({
       where: { id },
@@ -154,7 +144,22 @@ export class AuthService {
     res: Response,
   ): Promise<ApiResponse<{ accessToken: string }>> {
     const refreshToken = req.cookies['refreshToken'];
-    if (!refreshToken) throw new UnauthorizedException('Нет refresh токена');
+
+    if (!refreshToken)
+      throw new UnauthorizedException(
+        'Данные устарели, выполните вход в систему',
+      );
+
+    const isRevoked = await this.prismaService.refreshToken.findUnique({
+      where: {
+        tokenHash: refreshToken,
+      },
+    });
+
+    console.log(isRevoked);
+
+    if (!isRevoked || isRevoked.revoked)
+      throw new UnauthorizedException('Токен не активен');
 
     const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 
@@ -183,6 +188,7 @@ export class AuthService {
     }
     const user = await this.validate(userInfo.id);
 
+    this.tokenService.deactivateTokens(userInfo.id);
     return this.tokenService.auth(res, user);
   }
 }

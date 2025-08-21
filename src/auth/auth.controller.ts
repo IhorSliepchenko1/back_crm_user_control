@@ -45,8 +45,8 @@ export class AuthController {
   @Auth()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Res({ passthrough: true }) res: Response) {
-    return await this.tokenService.logout(res);
+  async logout(@Res({ passthrough: true }) res: Response, @Req() req: Request) {
+    return await this.tokenService.logout(res, req);
   }
 
   @Auth()

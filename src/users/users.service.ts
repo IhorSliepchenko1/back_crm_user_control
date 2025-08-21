@@ -6,8 +6,8 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UsersDto } from './dto/users.dto';
 import { RoleChangeDto } from './dto/role-change.dto';
-import { buildResponse } from 'src/common/build-response';
 import { Roles } from '@prisma/client';
+import { buildResponse } from 'src/common/utils/build-response';
 
 @Injectable()
 export class UsersService {

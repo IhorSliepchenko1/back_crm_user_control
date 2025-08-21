@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { buildResponse } from 'src/common/build-response';
-import { ApiResponse } from 'src/common/interfaces';
 import { Role } from '@prisma/client';
+import { ApiResponse } from 'src/common/interfaces';
+import { buildResponse } from 'src/common/utils/build-response';
 
 @Injectable()
 export class RoleService {

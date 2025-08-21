@@ -1,8 +1,4 @@
-interface ApiResponse<T = undefined> {
-  success: boolean;
-  message: string;
-  data?: T;
-}
+import { ApiResponse } from "../interfaces";
 
 export function buildResponse<T = undefined>(
   message: string,
@@ -11,6 +7,6 @@ export function buildResponse<T = undefined>(
   return {
     success: true,
     message,
-    ...(data !== undefined && { data }),
+    ...(data !== undefined && data),
   };
 }
