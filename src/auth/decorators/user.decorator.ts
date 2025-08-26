@@ -5,5 +5,5 @@ export const User = createParamDecorator((_, ctx: ExecutionContext) => {
   const request = ctx.switchToHttp().getRequest();
   const user = request.user as JwtPayload;
 
-  return user.roles;
+  return user
 });

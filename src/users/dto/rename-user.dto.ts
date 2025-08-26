@@ -1,13 +1,8 @@
 import { IsNotEmpty, IsString, Length } from 'class-validator';
 
-export class LoginDto {
+export class RenameUserDto {
   @IsString()
   @IsNotEmpty()
   @Length(5, 20)
   login: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @Length(5, 20)
-  password: string;
 }

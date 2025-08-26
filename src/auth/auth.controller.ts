@@ -16,6 +16,7 @@ import { User } from './decorators/user.decorator';
 import { TokenService } from 'src/token/token.service';
 import type { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { Auth } from './decorators/auth.decorator';
+import { AuthRoles } from './decorators/auth-roles.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -24,6 +25,7 @@ export class AuthController {
     private readonly tokenService: TokenService,
   ) {}
 
+  @AuthRoles('ADMIN')
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async registerUser(@Body() dto: RegisterDto) {
@@ -50,7 +52,7 @@ export class AuthController {
   @Get('me')
   @HttpCode(HttpStatus.OK)
   async findOne(@User() user: JwtPayload) {
-    return user;
+    return user.roles;
   }
 
   @Auth()

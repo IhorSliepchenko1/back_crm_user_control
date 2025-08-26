@@ -8,9 +8,13 @@ import { UsersDto } from './dto/users.dto';
 import { RoleChangeDto } from './dto/role-change.dto';
 import { Roles } from '@prisma/client';
 import { buildResponse } from 'src/common/utils/build-response';
+import { RenameUserDto } from './dto/rename-user.dto';
+import { ChangePassword } from './dto/change-password.dto';
+import * as argon2 from 'argon2';
 
 @Injectable()
 export class UsersService {
+  jwtService: any;
   constructor(private readonly prismaService: PrismaService) {}
 
   async users(dto: UsersDto) {
@@ -110,5 +114,77 @@ export class UsersService {
     }
 
     return buildResponse('Роли изменены');
+  }
+
+  private async findUser(id: string) {
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не обнаружен');
+    }
+
+    return user;
+  }
+
+  async blockedOrUnblockedUser(id: string) {
+    const user = await this.findUser(id);
+
+    await this.prismaService.user.update({
+      where: { id: user.id },
+
+      data: {
+        blocked: !user.blocked,
+      },
+    });
+
+    return buildResponse(
+      `Пользователь '${user.login}' ${!user.blocked ? 'заблокирован' : 'разблокирован'}`,
+    );
+  }
+
+  async renameUser(dto: RenameUserDto, id: string) {
+    const user = await this.findUser(id);
+
+    await this.prismaService.user.update({
+      where: { id: user.id },
+      data: {
+        login: dto.login,
+      },
+    });
+
+    return buildResponse('Пользователь переименован');
+  }
+
+  async changePassword(dto: ChangePassword, id: string) {
+    const user = await this.findUser(id);
+
+    const { oldPassword, newPassword } = dto;
+
+    if (oldPassword === newPassword) {
+      throw new ConflictException('Значения не могут быть одинаковыми');
+    }
+
+    const isMatch = await argon2.verify(user.password, oldPassword);
+
+    if (!isMatch) {
+      throw new ConflictException('Неверный пароль');
+    }
+
+    const hashNewPassword = await argon2.hash(newPassword);
+
+    await this.prismaService.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        password: hashNewPassword,
+      },
+    });
+
+    return buildResponse('Вы успешно сменили пароль');
   }
 }
