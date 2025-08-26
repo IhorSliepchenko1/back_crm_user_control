@@ -7,6 +7,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id              String         @id @default(uuid())
+  login           String         @unique
+  password        String
+  chatsId         Chat[]
+  createdProjects Project[]
+  projects        Project[]      @relation("participants_projects")
+  refreshTokens   RefreshToken[]
+  roles           Role[]         @relation("role_connections")
+  tasks           Task[]
+  blocked         Boolean        @default(false)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
 model Role {
   id           String   @id @default(uuid())
   name         Roles    @unique
@@ -18,24 +35,9 @@ model Role {
   @@map("roles")
 }
 
-model User {
-  id            String         @id @default(uuid())
-  login         String         @unique
-  password      String
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  chatsId       Chat[]
-  projects      Project[]
-  refreshTokens RefreshToken[]
-  roles         Role[]         @relation("role_connections")
-
-  @@map("users")
-}
-
 model RefreshToken {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
-  expiresAt DateTime @map("expires_at")
   tokenHash String   @unique @map("token_hash")
   revoked   Boolean
   createdAt DateTime @default(now()) @map("created_at")
@@ -46,26 +48,30 @@ model RefreshToken {
 }
 
 model Project {
-  id        String   @id @default(uuid())
-  name      String
-  userId    String   @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  user      User     @relation(fields: [userId], references: [id])
-  tasks     Task[]
+  id           String   @id @default(uuid())
+  name         String
+  creatorId    String   @map("creator_id")
+  creator      User     @relation(fields: [creatorId], references: [id])
+  participants User[]   @relation("participants_projects")
+  tasks        Task[]
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("projects")
 }
 
 model Task {
-  id        String     @id @default(uuid())
-  name      String
-  status    TaskStatus @default(TODO)
-  deadline  DateTime?
-  projectId String     @map("project_id")
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
-  project   Project    @relation(fields: [projectId], references: [id])
+  id         String     @id @default(uuid())
+  name       String
+  status     TaskStatus @default(IN_PROGRESS)
+  deadline   DateTime?
+  projectId  String     @map("project_id")
+  project    Project    @relation(fields: [projectId], references: [id])
+  executorId String     @map("executor_id")
+  executor   User       @relation(fields: [executorId], references: [id])
+  filePath   String?    @map("file_path")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
 
   @@map("tasks")
 }
@@ -74,10 +80,10 @@ model Chat {
   id        String   @id @default(uuid())
   message   String
   userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
   filePath  String?  @map("file_path")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  user      User     @relation(fields: [userId], references: [id])
 
   @@map("chats")
 }
@@ -88,7 +94,6 @@ enum Roles {
 }
 
 enum TaskStatus {
-  TODO
   IN_PROGRESS
   DONE
 }

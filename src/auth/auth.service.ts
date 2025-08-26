@@ -15,6 +15,7 @@ import { ConfigService } from '@nestjs/config';
 import { Roles } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { ApiResponse } from 'src/common/interfaces';
+import { buildResponse } from 'src/common/utils/build-response';
 
 @Injectable()
 export class AuthService {
@@ -25,10 +26,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(
-    res: Response,
-    dto: RegisterDto,
-  ): Promise<ApiResponse<{ accessToken: string }>> {
+  async register(dto: RegisterDto): Promise<ApiResponse> {
     const { login, password, adminCode } = dto;
 
     if (!login || !password) {
@@ -61,7 +59,7 @@ export class AuthService {
       rolesUser.push('USER');
     }
 
-    const user = await this.prismaService.user.create({
+    await this.prismaService.user.create({
       data: {
         login,
         password: hashPassword,
@@ -71,24 +69,11 @@ export class AuthService {
           })),
         },
       },
-
-      select: {
-        id: true,
-        login: true,
-        roles: true,
-      },
     });
 
-    const roles = user.roles.map((n) => n.name);
-
-    const payload = { ...user, roles };
-
-    return this.tokenService.auth(res, payload);
+    return buildResponse('Новый ползователь добавлен');
   }
-  async login(
-    res: Response,
-    dto: LoginDto,
-  ): Promise<ApiResponse<{ accessToken: string }>> {
+  async login(res: Response, dto: LoginDto): Promise<ApiResponse> {
     const { login, password } = dto;
     if (!login || !password) {
       throw new ConflictException('Данные обязательны');
@@ -102,7 +87,6 @@ export class AuthService {
       select: {
         id: true,
         password: true,
-        login: true,
         roles: true,
       },
     });
@@ -118,6 +102,7 @@ export class AuthService {
     }
     const roles = user.roles.map((n) => n.name);
     const payload = { ...user, roles };
+
     return this.tokenService.auth(res, payload);
   }
   async validate(id: string): Promise<JwtPayload> {
@@ -127,11 +112,21 @@ export class AuthService {
       select: {
         id: true,
         roles: true,
-        login: true,
       },
     });
 
     if (!userInfo) throw new NotFoundException('Пользователь не найден');
+
+    const checkAuth = await this.prismaService.refreshToken.findMany({
+      where: {
+        userId: id,
+        revoked: false,
+      },
+    });
+
+    if (checkAuth.length < 1) {
+      throw new UnauthorizedException('Пользователь не авторизован');
+    }
 
     const roles = userInfo.roles.map((n) => n.name);
     const user = { ...userInfo, roles };
@@ -139,10 +134,7 @@ export class AuthService {
     return user;
   }
 
-  async refresh(
-    req: Request,
-    res: Response,
-  ): Promise<ApiResponse<{ accessToken: string }>> {
+  async refresh(req: Request, res: Response): Promise<ApiResponse> {
     const refreshToken = req.cookies['refreshToken'];
 
     if (!refreshToken)
@@ -155,8 +147,6 @@ export class AuthService {
         tokenHash: refreshToken,
       },
     });
-
-    console.log(isRevoked);
 
     if (!isRevoked || isRevoked.revoked)
       throw new UnauthorizedException('Токен не активен');
@@ -174,7 +164,6 @@ export class AuthService {
 
       select: {
         id: true,
-        login: true,
         roles: {
           select: {
             name: true,

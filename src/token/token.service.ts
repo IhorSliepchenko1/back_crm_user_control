@@ -12,7 +12,6 @@ import { buildResponse } from 'src/common/utils/build-response';
 
 @Injectable()
 export class TokenService {
-  private readonly JWT_ACCESS_TOKEN_TTL: string;
   private readonly JWT_REFRESH_TOKEN_TTL: string;
   private readonly COOKIE_DOMAIN: string;
   private readonly JWT_SECRET: string;
@@ -21,9 +20,6 @@ export class TokenService {
     private readonly jwtService: JwtService,
     private readonly prismaService: PrismaService,
   ) {
-    this.JWT_ACCESS_TOKEN_TTL = configService.getOrThrow<string>(
-      'JWT_ACCESS_TOKEN_TTL',
-    );
     this.JWT_REFRESH_TOKEN_TTL = configService.getOrThrow<string>(
       'JWT_REFRESH_TOKEN_TTL',
     );
@@ -31,33 +27,24 @@ export class TokenService {
     this.JWT_SECRET = configService.getOrThrow<string>('JWT_SECRET');
   }
 
-  async auth(
-    res: Response,
-    payload: JwtPayload,
-  ): Promise<ApiResponse<{ accessToken: string }>> {
-    const { id, login, roles } = payload;
+  async auth(res: Response, payload: JwtPayload): Promise<ApiResponse> {
+    const { id, roles } = payload;
 
     await this.deactivateTokens(id);
 
-    const { accessToken, refreshToken } = this.generateTokens(id, login, roles);
+    const { refreshToken } = this.generateTokens(id, roles);
 
     this.setRefreshTokenCookie(res, refreshToken, this.JWT_REFRESH_TOKEN_TTL);
 
     await this.prismaService.refreshToken.create({
       data: {
         userId: id,
-        expiresAt: this.convertTime(),
         tokenHash: refreshToken,
         revoked: false,
       },
     });
 
-    return buildResponse<{ accessToken: string }>(
-      'Система выдала новый access-token, никому его не сообщайте',
-      {
-        accessToken,
-      },
-    );
+    return buildResponse('Токен обновлён');
   }
 
   private signToken(payload: JwtPayload, ttl: string) {
@@ -67,15 +54,11 @@ export class TokenService {
     });
   }
 
-  private generateTokens(id: string, login: string, roles: Roles[]) {
-    const payload: JwtPayload = { id, roles, login };
-    const accessToken = this.signToken(payload, this.JWT_ACCESS_TOKEN_TTL);
+  private generateTokens(id: string, roles: Roles[]) {
+    const payload: JwtPayload = { id, roles };
     const refreshToken = this.signToken(payload, this.JWT_REFRESH_TOKEN_TTL);
 
-    return {
-      accessToken,
-      refreshToken,
-    };
+    return { refreshToken };
   }
 
   private setRefreshTokenCookie(res: Response, value: string, ttl: string | 0) {
@@ -85,7 +68,7 @@ export class TokenService {
       httpOnly: true,
       domain: this.COOKIE_DOMAIN,
       secure: !isDev(this.configService),
-      sameSite: 'none',
+      sameSite: 'lax',
       maxAge,
     });
   }
@@ -108,21 +91,6 @@ export class TokenService {
     await this.deactivateTokens(payload.id);
 
     return buildResponse('Выполнен выход из системы');
-  }
-
-  convertTime(): string {
-    const maxAge = parse(this.JWT_REFRESH_TOKEN_TTL as string) as number;
-
-    const now = new Date(Date.now() + maxAge);
-    // "2025-08-21T09:42:35.439Z"
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-
-    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.000Z`;
   }
 
   // по user_id

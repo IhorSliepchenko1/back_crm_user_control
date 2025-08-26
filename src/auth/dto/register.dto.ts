@@ -9,8 +9,8 @@ import {
 export class RegisterDto {
   @IsString()
   @IsNotEmpty()
-  @MinLength(1)
-  @MaxLength(30)
+  @MinLength(5)
+  @MaxLength(20)
   login: string;
 
   @IsString()

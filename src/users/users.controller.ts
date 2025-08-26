@@ -17,14 +17,14 @@ import { RoleChangeDto } from './dto/role-change.dto';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @AuthRoles(['ADMIN'])
+  @AuthRoles('ADMIN')
   @Get('')
   @HttpCode(HttpStatus.OK)
   async users(@Query('page') page: number, @Query('limit') limit: number) {
     return await this.usersService.users({ page: +page, limit: +limit });
   }
 
-  @AuthRoles(['ADMIN'])
+  @AuthRoles('ADMIN')
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   async roleChange(@Param('id') id: string, @Body() dto: RoleChangeDto) {

@@ -6,7 +6,7 @@ import { AuthRoles } from 'src/auth/decorators/auth-roles.decorator';
 export class TokenController {
   constructor(private readonly tokenService: TokenService) {}
 
-  @AuthRoles(['ADMIN'])
+  @AuthRoles('ADMIN')
   @Post('deactivate/:id')
   @HttpCode(HttpStatus.OK)
   async deactivateTokens(@Param('id') id: string) {

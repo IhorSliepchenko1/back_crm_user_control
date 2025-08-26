@@ -8,8 +8,8 @@ import {
 export class LoginDto {
   @IsString()
   @IsNotEmpty()
-  @MinLength(1)
-  @MaxLength(30)
+  @MinLength(5)
+  @MaxLength(20)
   login: string;
 
   @IsString()
