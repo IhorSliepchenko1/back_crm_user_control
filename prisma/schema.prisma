@@ -51,6 +51,7 @@ model Project {
   id           String   @id @default(uuid())
   name         String
   creatorId    String   @map("creator_id")
+  active       Boolean  @default(true)
   creator      User     @relation(fields: [creatorId], references: [id])
   participants User[]   @relation("participants_projects")
   tasks        Task[]
@@ -94,6 +95,7 @@ enum Roles {
 }
 
 enum TaskStatus {
+  IN_REVIEW
   IN_PROGRESS
   DONE
 }

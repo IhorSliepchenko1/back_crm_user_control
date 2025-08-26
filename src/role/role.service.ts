@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Role, Roles } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { ApiResponse } from 'src/common/interfaces';
 import { buildResponse } from 'src/common/utils/build-response';
 import { UpdateDescriptionsDto } from './dto/update-descriptions.dto';

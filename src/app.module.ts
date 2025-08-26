@@ -9,6 +9,8 @@ import { RoleModule } from './role/role.module';
 import { UsersModule } from './users/users.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { LoggerModule } from './common/logger/logger.module';
+import { ProjectsModule } from './project/projects.module';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
@@ -18,7 +20,9 @@ import { LoggerModule } from './common/logger/logger.module';
     TokenModule,
     RoleModule,
     UsersModule,
-    LoggerModule
+    LoggerModule,
+    ProjectsModule,
+    TaskModule
   ],
 
   controllers: [AppController],
