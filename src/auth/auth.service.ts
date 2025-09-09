@@ -74,7 +74,7 @@ export class AuthService {
     return buildResponse('Новый ползователь добавлен');
   }
   async login(res: Response, dto: LoginDto): Promise<ApiResponse> {
-    const { login, password } = dto;
+    const { login, password, remember } = dto;
     if (!login || !password) {
       throw new ConflictException('Данные обязательны');
     }
@@ -103,7 +103,7 @@ export class AuthService {
     const roles = user.roles.map((n) => n.name);
     const payload = { ...user, roles };
 
-    return this.tokenService.auth(res, payload);
+    return this.tokenService.auth(res, payload, remember);
   }
   async validate(id: string): Promise<JwtPayload> {
     const userInfo = await this.prismaService.user.findUnique({
@@ -133,7 +133,6 @@ export class AuthService {
 
     return user;
   }
-
   async refresh(req: Request, res: Response): Promise<ApiResponse> {
     const refreshToken = req.cookies['refreshToken'];
 

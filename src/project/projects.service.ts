@@ -86,7 +86,7 @@ export class ProjectsService {
   }
 
   async projects(dto: Projects) {
-    const { page, limit, projectStatus } = dto;
+    const { page, limit, active } = dto;
     const currentPage = page ?? 1;
     const pageSize = limit ?? 10;
 
@@ -95,9 +95,7 @@ export class ProjectsService {
         skip: (currentPage - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
-        where: {
-          active: projectStatus !== 'all' && projectStatus,
-        },
+        where: { active },
 
         select: {
           name: true,

@@ -12,7 +12,8 @@ import { buildResponse } from 'src/common/utils/build-response';
 
 @Injectable()
 export class TokenService {
-  private readonly JWT_REFRESH_TOKEN_TTL: string;
+  private readonly JWT_REFRESH_TOKEN_TTL_SHORT: string;
+  private readonly JWT_REFRESH_TOKEN_TTL_LONG: string;
   private readonly COOKIE_DOMAIN: string;
   private readonly JWT_SECRET: string;
   constructor(
@@ -20,21 +21,32 @@ export class TokenService {
     private readonly jwtService: JwtService,
     private readonly prismaService: PrismaService,
   ) {
-    this.JWT_REFRESH_TOKEN_TTL = configService.getOrThrow<string>(
-      'JWT_REFRESH_TOKEN_TTL',
+    this.JWT_REFRESH_TOKEN_TTL_SHORT = configService.getOrThrow<string>(
+      'JWT_REFRESH_TOKEN_TTL_SHORT',
+    );
+    this.JWT_REFRESH_TOKEN_TTL_LONG = configService.getOrThrow<string>(
+      'JWT_REFRESH_TOKEN_TTL_LONG',
     );
     this.COOKIE_DOMAIN = configService.getOrThrow<string>('COOKIE_DOMAIN');
     this.JWT_SECRET = configService.getOrThrow<string>('JWT_SECRET');
   }
 
-  async auth(res: Response, payload: JwtPayload): Promise<ApiResponse> {
+  async auth(
+    res: Response,
+    payload: JwtPayload,
+    remember: boolean = false,
+  ): Promise<ApiResponse> {
     const { id, roles } = payload;
 
     await this.deactivateTokens(id);
 
-    const { refreshToken } = this.generateTokens(id, roles);
+    const ttl = remember
+      ? this.JWT_REFRESH_TOKEN_TTL_SHORT
+      : this.JWT_REFRESH_TOKEN_TTL_LONG;
 
-    this.setRefreshTokenCookie(res, refreshToken, this.JWT_REFRESH_TOKEN_TTL);
+    const { refreshToken } = this.generateTokens(id, roles, ttl);
+
+    this.setRefreshTokenCookie(res, refreshToken, ttl);
 
     await this.prismaService.refreshToken.create({
       data: {
@@ -54,9 +66,9 @@ export class TokenService {
     });
   }
 
-  private generateTokens(id: string, roles: Roles[]) {
+  private generateTokens(id: string, roles: Roles[], ttl: string) {
     const payload: JwtPayload = { id, roles };
-    const refreshToken = this.signToken(payload, this.JWT_REFRESH_TOKEN_TTL);
+    const refreshToken = this.signToken(payload, ttl);
 
     return { refreshToken };
   }
@@ -93,7 +105,6 @@ export class TokenService {
     return buildResponse('Выполнен выход из системы');
   }
 
-  // по user_id
   async deactivateTokens(id: string) {
     const findLiveTokens = await this.prismaService.refreshToken.findMany({
       where: {

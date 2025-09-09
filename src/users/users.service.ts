@@ -40,7 +40,6 @@ export class UsersService {
       limit,
     });
   }
-
   private async validateRolesExist(
     names: Roles[],
     id: string,
@@ -76,7 +75,6 @@ export class UsersService {
 
     return true;
   }
-
   async roleChange(dto: RoleChangeDto, id: string) {
     const user = await this.prismaService.user.findUnique({
       where: {
@@ -115,7 +113,6 @@ export class UsersService {
 
     return buildResponse('Роли изменены');
   }
-
   private async findUser(id: string) {
     const user = await this.prismaService.user.findUnique({
       where: {
@@ -129,7 +126,6 @@ export class UsersService {
 
     return user;
   }
-
   async blockedOrUnblockedUser(id: string) {
     const user = await this.findUser(id);
 
@@ -145,7 +141,6 @@ export class UsersService {
       `Пользователь '${user.login}' ${!user.blocked ? 'заблокирован' : 'разблокирован'}`,
     );
   }
-
   async renameUser(dto: RenameUserDto, id: string) {
     const user = await this.findUser(id);
 
@@ -158,7 +153,6 @@ export class UsersService {
 
     return buildResponse('Пользователь переименован');
   }
-
   async changePassword(dto: ChangePassword, id: string) {
     const user = await this.findUser(id);
 

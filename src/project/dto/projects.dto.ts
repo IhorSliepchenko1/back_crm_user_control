@@ -2,7 +2,7 @@ import { IsNotEmpty, IsNumber } from 'class-validator';
 
 export class Projects {
   @IsNotEmpty()
-  projectStatus: boolean | 'all';
+  active: boolean;
 
   @IsNumber()
   page: number;
