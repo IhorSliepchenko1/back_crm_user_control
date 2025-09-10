@@ -1,6 +1,5 @@
 import {
   Body,
-  ConflictException,
   Controller,
   ForbiddenException,
   Get,
@@ -9,6 +8,7 @@ import {
   Param,
   Patch,
   Query,
+  Req,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthRoles } from 'src/auth/decorators/auth-roles.decorator';
@@ -18,6 +18,7 @@ import { RenameUserDto } from './dto/rename-user.dto';
 import { User } from 'src/auth/decorators/user.decorator';
 import type { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { ChangePassword } from './dto/change-password.dto';
+import type { Request } from 'express';
 
 @Controller('users')
 export class UsersController {
@@ -50,17 +51,9 @@ export class UsersController {
   async renameUser(
     @Param('id') id: string,
     @Body() dto: RenameUserDto,
-    @User() user: JwtPayload,
+    @Req() req: Request,
   ) {
-    const { id: userId, roles } = user;
-
-    if (!roles.includes('ADMIN') && id !== userId) {
-      throw new ForbiddenException(
-        'У вас нет прав редактировать чужие логины!',
-      );
-    }
-
-    return await this.usersService.renameUser(dto, id);
+    return await this.usersService.renameUser(dto, id, req);
   }
 
   @Auth()
@@ -69,16 +62,8 @@ export class UsersController {
   async changePassword(
     @Param('id') id: string,
     @Body() dto: ChangePassword,
-    @User() user: JwtPayload,
+    @Req() req: Request,
   ) {
-    const { id: userId, roles } = user;
-
-    if (!roles.includes('ADMIN') && id !== userId) {
-      throw new ForbiddenException(
-        'У вас нет прав редактировать чужие пароли!',
-      );
-    }
-
-    return await this.usersService.changePassword(dto, id);
+    return await this.usersService.changePassword(dto, id, req);
   }
 }

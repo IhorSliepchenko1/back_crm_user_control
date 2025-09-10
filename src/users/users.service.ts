@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,10 +12,11 @@ import { buildResponse } from 'src/common/utils/build-response';
 import { RenameUserDto } from './dto/rename-user.dto';
 import { ChangePassword } from './dto/change-password.dto';
 import * as argon2 from 'argon2';
+import type { Request } from 'express';
+import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 
 @Injectable()
 export class UsersService {
-  jwtService: any;
   constructor(private readonly prismaService: PrismaService) {}
 
   async users(dto: UsersDto) {
@@ -141,7 +143,15 @@ export class UsersService {
       `Пользователь '${user.login}' ${!user.blocked ? 'заблокирован' : 'разблокирован'}`,
     );
   }
-  async renameUser(dto: RenameUserDto, id: string) {
+  async renameUser(dto: RenameUserDto, id: string, req: Request) {
+    const { id: userId, roles } = req.user as JwtPayload;
+
+    if (!roles.includes('ADMIN') && id !== userId) {
+      throw new ForbiddenException(
+        'У вас нет прав редактировать чужие логины!',
+      );
+    }
+
     const user = await this.findUser(id);
 
     await this.prismaService.user.update({
@@ -153,7 +163,14 @@ export class UsersService {
 
     return buildResponse('Пользователь переименован');
   }
-  async changePassword(dto: ChangePassword, id: string) {
+  async changePassword(dto: ChangePassword, id: string, req: Request) {
+    const { id: userId, roles } = req.user as JwtPayload;
+
+    if (!roles.includes('ADMIN') && id !== userId) {
+      throw new ForbiddenException(
+        'У вас нет прав редактировать чужие логины!',
+      );
+    }
     const user = await this.findUser(id);
 
     const { oldPassword, newPassword } = dto;

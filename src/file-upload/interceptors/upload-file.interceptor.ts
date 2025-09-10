@@ -30,7 +30,7 @@ export function UploadFileInterceptor(
           filename: (_req, file, cb) => {
             const { fieldname, originalname } = file;
             const UUID = uuidv4();
-            const filename = `${fieldname}_${originalname}_${UUID}.${ext}`;
+            const filename = `${[fieldname, originalname, UUID].join('_')}.${ext}`;
             cb(null, filename);
           },
         }),

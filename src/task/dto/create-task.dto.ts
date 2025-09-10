@@ -20,14 +20,4 @@ export class CreateTaskDto {
   @IsOptional()
   @MaxLength(2_500)
   taskDescription?: string;
-
-  @IsUUID('4')
-  projectId: string;
-
-  @IsUUID('4')
-  executorId: string;
-
-  @IsString()
-  @IsOptional()
-  filePathTask?: string;
 }
