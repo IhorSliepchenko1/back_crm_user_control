@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { TaskController } from './task.controller';
-import { FileUploadModule } from 'src/file-upload/file-upload.module';
+import { UploadsModule } from 'src/uploads/uploads.module';
 
 @Module({
-  imports: [FileUploadModule],
+  imports: [UploadsModule],
   controllers: [TaskController],
   providers: [TaskService],
 })

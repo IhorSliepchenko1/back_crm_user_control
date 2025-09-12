@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Response, Request } from 'express';
+import type { Response, Request } from 'express';
 import * as argon2 from 'argon2';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';

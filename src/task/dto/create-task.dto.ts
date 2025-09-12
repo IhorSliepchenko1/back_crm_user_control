@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsDate,
   IsOptional,
   IsString,
@@ -13,11 +14,16 @@ export class CreateTaskDto {
   @MaxLength(100)
   name: string;
 
-  @IsDate()
-  deadline: Date;
+  @IsString()
+  deadline: string;
+  // "yyyy-mm-ddT00:00:00.000Z"
 
   @IsString()
   @IsOptional()
   @MaxLength(2_500)
   taskDescription?: string;
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  executors: string[];
 }

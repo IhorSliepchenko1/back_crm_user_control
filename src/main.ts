@@ -6,7 +6,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { MulterExceptionFilter } from './file-upload/filters/multer-exeption.filter';
+import { MulterExceptionFilter } from './uploads/filters/multer-exeption.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

@@ -7,12 +7,12 @@ import {
   Param,
   Patch,
   Post,
+  Req,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { AuthRoles } from 'src/auth/decorators/auth-roles.decorator';
 import { ProjectDto } from './dto/project.dto';
-import { User } from 'src/auth/decorators/user.decorator';
-import type { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
+import type { Request } from 'express';
 import { Participants } from './dto/participants.dto';
 import { Projects } from './dto/projects.dto';
 
@@ -23,8 +23,8 @@ export class ProjectsController {
   @AuthRoles('ADMIN')
   @Post('')
   @HttpCode(HttpStatus.CREATED)
-  async createProject(@Body() dto: ProjectDto, @User() user: JwtPayload) {
-    return await this.projectService.createProject(dto, user.id);
+  async createProject(@Body() dto: ProjectDto, @Req() req: Request) {
+    return await this.projectService.createProject(dto, req);
   }
 
   @AuthRoles('ADMIN')

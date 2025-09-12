@@ -4,16 +4,24 @@ import { ProjectDto } from './dto/project.dto';
 import { buildResponse } from 'src/common/utils/build-response';
 import { Participants } from './dto/participants.dto';
 import { Projects } from './dto/projects.dto';
+import type { Request } from 'express';
+import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 
 @Injectable()
 export class ProjectsService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async createProject(dto: ProjectDto, creatorId: string) {
+  async createProject(dto: ProjectDto, req: Request) {
+    const { id: creatorId } = req.user as JwtPayload;
+    const { name, participants } = dto;
+
     await this.prismaService.project.create({
       data: {
-        name: dto.name,
+        name,
         creatorId,
+        participants: {
+          connect: participants.map((id) => ({ id })),
+        },
       },
     });
 
@@ -35,16 +43,17 @@ export class ProjectsService {
   }
 
   async renameProject(dto: ProjectDto, id: string) {
-    const project = await this.findProject(id);
+    await this.findProject(id);
+    const { name } = dto;
 
     await this.prismaService.project.update({
-      where: { id: project.id },
+      where: { id },
       data: {
-        name: dto.name,
+        name,
       },
     });
 
-    return buildResponse('Пользователь переименован');
+    return buildResponse('Проект переименован');
   }
 
   async participantsProject(dto: Participants, id: string) {
@@ -74,7 +83,7 @@ export class ProjectsService {
 
     await this.prismaService.project.update({
       where: {
-        id: project.id,
+        id,
       },
 
       data: {
@@ -152,7 +161,7 @@ export class ProjectsService {
       };
     });
 
-    return buildResponse('', {
+    return buildResponse('Данные получены', {
       data,
       total,
       page,

@@ -66,7 +66,7 @@ model Task {
   id              String     @id @default(uuid())
   name            String
   status          TaskStatus @default(IN_PROGRESS)
-  deadline        DateTime?
+  deadline        DateTime
   taskDescription String?    @map("task_description")
 
   projectId String  @map("project_id")
@@ -76,13 +76,30 @@ model Task {
 
   executors User[] @relation("executors")
 
-  filePathTask     String?        @map("file_path_task")
-  filePathExecutor String?        @map("file_path_executor")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-  notification     Notification[]
+  notification Notification[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  files     Files[]
 
   @@map("tasks")
+}
+
+model Files {
+  id        String   @id @default(uuid())
+  type      FileName
+  fileName String   @map("file_name")
+  taskId    String   @map("task_id")
+  task      Task     @relation(fields: [taskId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("files")
+}
+
+enum FileName {
+  filePathTask
+  filePathExecutor
 }
 
 model Notification {

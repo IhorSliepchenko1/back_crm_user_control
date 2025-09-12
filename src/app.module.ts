@@ -22,7 +22,7 @@ import { TaskModule } from './task/task.module';
     UsersModule,
     LoggerModule,
     ProjectsModule,
-    TaskModule
+    TaskModule,
   ],
 
   controllers: [AppController],
