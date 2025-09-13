@@ -8,20 +8,21 @@ datasource db {
 }
 
 model User {
-  id                String         @id @default(uuid())
-  login             String         @unique
+  id                String             @id @default(uuid())
+  login             String             @unique
   password          String
   chatsId           Chat[]
   createdProjects   Project[]
-  projects          Project[]      @relation("participants_projects")
+  projects          Project[]          @relation("participants_projects")
   refreshTokens     RefreshToken[]
-  roles             Role[]         @relation("role_connections")
-  executors         Task[]         @relation("executors")
-  blocked           Boolean        @default(false)
-  createdAt         DateTime       @default(now()) @map("created_at")
-  updatedAt         DateTime       @updatedAt @map("updated_at")
-  notifications     Notification[] @relation("recipients_notification")
+  roles             Role[]             @relation("role_connections")
+  executors         Task[]             @relation("executors")
+  blocked           Boolean            @default(false)
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  notifications     Notification[]     @relation("recipients_notification")
   notificationsSent Notification[]
+  notificationRead  NotificationRead[]
 
   @@map("users")
 }
@@ -87,21 +88,40 @@ model Task {
 }
 
 model Notification {
-  id         String   @id @default(uuid())
-  message    String
-  read       Boolean  @default(false)
-  senderId   String   @map("user_id")
-  sender     User     @relation(fields: [senderId], references: [id])
+  id       String @id @default(uuid())
+  subject  String
+  message  String
+  senderId String @map("sender_id")
+  sender   User   @relation(fields: [senderId], references: [id])
 
-  recipients User[]   @relation("recipients_notification")
+  recipients User[] @relation("recipients_notification")
 
-  taskId     String   @map("task_id")
-  task       Task     @relation(fields: [taskId], references: [id])
+  taskId String @map("task_id")
+  task   Task   @relation(fields: [taskId], references: [id])
 
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  notificationRead NotificationRead[]
 
   @@map("notifications")
+}
+
+model NotificationRead {
+  id             String       @id @default(uuid())
+  isRead         ReadStatus   @default(no_read) @map("is_read")
+  recipientId    String       @map("recipient_id")
+  recipient      User         @relation(fields: [recipientId], references: [id])
+  notificationId String       @map("notification_id")
+  notification   Notification @relation(fields: [notificationId], references: [id])
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@map("notification_read")
+}
+
+enum ReadStatus {
+  read
+  no_read
 }
 
 model Files {
@@ -132,8 +152,6 @@ model Chat {
 
   @@map("chats")
 }
-
-
 
 enum Roles {
   USER

@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { UsersDto } from './dto/users.dto';
 import { RoleChangeDto } from './dto/role-change.dto';
 import { Roles } from '@prisma/client';
 import { buildResponse } from 'src/common/utils/build-response';
@@ -14,12 +13,13 @@ import { ChangePassword } from './dto/change-password.dto';
 import * as argon2 from 'argon2';
 import type { Request } from 'express';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
+import { PaginationDto } from './dto/pagination.dto';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async users(dto: UsersDto) {
+  async users(dto: PaginationDto) {
     const { page, limit } = dto;
 
     const currentPage = page ?? 1;
@@ -42,6 +42,7 @@ export class UsersService {
       limit,
     });
   }
+  
   private async validateRolesExist(
     names: Roles[],
     id: string,

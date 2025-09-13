@@ -91,7 +91,13 @@ export class TaskService {
     return buildResponse('Новая задача добавлена');
   }
 
-  async updateTask(dto: UpdateTaskDto, id: string, req: Request) {
+  async updateTask(
+    dto: UpdateTaskDto,
+    id: string,
+    req: Request,
+    deleteFileName?: Array<string>,
+    files?: Array<Express.Multer.File>,
+  ) {
     const { id: creatorId } = req.user as JwtPayload;
 
     const task = await this.prismaService.task.findUnique({
@@ -259,11 +265,13 @@ export class TaskService {
       },
     });
 
+    const { message, subject } = dto;
     await this.notificationService.sendNotification(
       task.id,
       senderId,
       recipients,
-      dto.message,
+      message,
+      subject,
     );
 
     return buildResponse('Задача выслана на проверку');
@@ -308,10 +316,12 @@ export class TaskService {
 
     const recipients = task.executors.map((e) => e.id);
 
+    const { message, subject, status } = dto;
+
     await this.prismaService.task.update({
       where: { id },
       data: {
-        status: dto.status,
+        status,
       },
     });
 
@@ -319,7 +329,8 @@ export class TaskService {
       task.id,
       creatorId,
       recipients,
-      dto.message,
+      message,
+      subject,
     );
 
     return buildResponse('Ответ по проверке задачи отравлен');
