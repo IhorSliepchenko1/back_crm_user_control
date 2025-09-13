@@ -7,13 +7,15 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class CreateTaskDto {
+export class UpdateTaskDto {
   @IsString()
   @MinLength(5)
   @MaxLength(100)
+  @IsOptional()
   name: string;
 
   @IsString()
+  @IsOptional()
   deadline: string;
   // "yyyy-mm-ddT00:00:00.000Z"
 
@@ -22,7 +24,18 @@ export class CreateTaskDto {
   @MaxLength(2_500)
   taskDescription?: string;
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(2_500)
+  executorDescription?: string;
+
   @IsArray()
+  @IsOptional()
   @IsUUID('4', { each: true })
-  executors: string[];
+  executorsAdd: string[];
+
+  @IsArray()
+  @IsOptional()
+  @IsUUID('4', { each: true })
+  executorsRemove: string[];
 }

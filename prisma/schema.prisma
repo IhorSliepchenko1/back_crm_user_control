@@ -8,19 +8,20 @@ datasource db {
 }
 
 model User {
-  id              String         @id @default(uuid())
-  login           String         @unique
-  password        String
-  chatsId         Chat[]
-  createdProjects Project[]
-  projects        Project[]      @relation("participants_projects")
-  refreshTokens   RefreshToken[]
-  roles           Role[]         @relation("role_connections")
-  executors       Task[]         @relation("executors")
-  blocked         Boolean        @default(false)
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
-  notification    Notification[]
+  id                String         @id @default(uuid())
+  login             String         @unique
+  password          String
+  chatsId           Chat[]
+  createdProjects   Project[]
+  projects          Project[]      @relation("participants_projects")
+  refreshTokens     RefreshToken[]
+  roles             Role[]         @relation("role_connections")
+  executors         Task[]         @relation("executors")
+  blocked           Boolean        @default(false)
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  notifications     Notification[] @relation("recipients_notification")
+  notificationsSent Notification[]
 
   @@map("users")
 }
@@ -85,10 +86,28 @@ model Task {
   @@map("tasks")
 }
 
+model Notification {
+  id         String   @id @default(uuid())
+  message    String
+  read       Boolean  @default(false)
+  senderId   String   @map("user_id")
+  sender     User     @relation(fields: [senderId], references: [id])
+
+  recipients User[]   @relation("recipients_notification")
+
+  taskId     String   @map("task_id")
+  task       Task     @relation(fields: [taskId], references: [id])
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("notifications")
+}
+
 model Files {
   id        String   @id @default(uuid())
   type      FileName
-  fileName String   @map("file_name")
+  fileName  String   @map("file_name")
   taskId    String   @map("task_id")
   task      Task     @relation(fields: [taskId], references: [id])
   createdAt DateTime @default(now()) @map("created_at")
@@ -100,20 +119,6 @@ model Files {
 enum FileName {
   filePathTask
   filePathExecutor
-}
-
-model Notification {
-  id        String   @id @default(uuid())
-  message   String
-  read      Boolean  @default(false)
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id])
-  taskId    String   @map("task_id")
-  task      Task     @relation(fields: [taskId], references: [id])
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("notifications")
 }
 
 model Chat {
@@ -128,6 +133,8 @@ model Chat {
   @@map("chats")
 }
 
+
+
 enum Roles {
   USER
   ADMIN
@@ -137,4 +144,5 @@ enum TaskStatus {
   IN_REVIEW
   IN_PROGRESS
   DONE
+  CANCELED
 }

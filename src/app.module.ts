@@ -11,6 +11,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { LoggerModule } from './common/logger/logger.module';
 import { ProjectsModule } from './project/projects.module';
 import { TaskModule } from './task/task.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { TaskModule } from './task/task.module';
     LoggerModule,
     ProjectsModule,
     TaskModule,
+    NotificationModule,
   ],
 
   controllers: [AppController],
