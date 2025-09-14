@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -12,11 +11,8 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthRoles } from 'src/auth/decorators/auth-roles.decorator';
-import { RoleChangeDto } from './dto/role-change.dto';
 import { Auth } from 'src/auth/decorators/auth.decorator';
 import { RenameUserDto } from './dto/rename-user.dto';
-import { User } from 'src/auth/decorators/user.decorator';
-import type { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { ChangePassword } from './dto/change-password.dto';
 import type { Request } from 'express';
 
@@ -27,15 +23,8 @@ export class UsersController {
   @AuthRoles('ADMIN')
   @Get('')
   @HttpCode(HttpStatus.OK)
-  async users(@Query('page') page: number, @Query('limit') limit: number) {
+  async users(@Query('page') page: string, @Query('limit') limit: string) {
     return await this.usersService.users({ page: +page, limit: +limit });
-  }
-
-  @AuthRoles('ADMIN')
-  @Patch(':id')
-  @HttpCode(HttpStatus.OK)
-  async roleChange(@Param('id') id: string, @Body() dto: RoleChangeDto) {
-    return await this.usersService.roleChange(dto, id);
   }
 
   @AuthRoles('ADMIN')
