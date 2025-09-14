@@ -3,26 +3,25 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Length,
   MaxLength,
-  MinLength,
 } from 'class-validator';
 
 export class CreateTaskDto {
-  @IsString()
-  @MinLength(5)
-  @MaxLength(100)
+  @IsString({ message: 'Название задачи - это строка' })
+  @Length(5, 100, { message: 'Длина названия задачи 5-100 символов' })
   name: string;
 
-  @IsString()
+  @IsString({ message: 'deadline - это строка' })
   deadline: string;
   // "yyyy-mm-ddT00:00:00.000Z"
 
   @IsString()
   @IsOptional()
-  @MaxLength(2_500)
+  @MaxLength(2_500, { message: 'Максимальное к-во 2500 символов' })
   taskDescription?: string;
 
-  @IsArray()
+  @IsArray({ message: 'Передайте массив пользователей' })
   @IsUUID('4', { each: true })
   executors: string[];
 }

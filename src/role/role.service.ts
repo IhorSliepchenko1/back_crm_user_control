@@ -47,7 +47,7 @@ export class RoleService {
         descriptions: dto.descriptions,
       },
     });
-    return buildResponse('Новая роль создана');
+    return buildResponse('Описание роли изменено');
   }
 
   async validateRolesExist(

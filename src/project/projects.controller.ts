@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
@@ -14,7 +15,7 @@ import { AuthRoles } from 'src/auth/decorators/auth-roles.decorator';
 import { ProjectDto } from './dto/project.dto';
 import type { Request } from 'express';
 import { Participants } from './dto/participants.dto';
-import { Projects } from './dto/projects.dto';
+import { RenameProjectDto } from './dto/rename-project.dto';
 
 @Controller('projects')
 export class ProjectsController {
@@ -30,12 +31,12 @@ export class ProjectsController {
   @AuthRoles('ADMIN')
   @Patch('rename/:id')
   @HttpCode(HttpStatus.OK)
-  async renameProject(@Param('id') id: string, @Body() dto: ProjectDto) {
+  async renameProject(@Param('id') id: string, @Body() dto: RenameProjectDto) {
     return await this.projectService.renameProject(dto, id);
   }
 
   @AuthRoles('ADMIN')
-  @Patch(':id/participants')
+  @Patch('participants/:id')
   @HttpCode(HttpStatus.OK)
   async participantsProject(
     @Param('id') id: string,
@@ -45,7 +46,7 @@ export class ProjectsController {
   }
 
   @AuthRoles('ADMIN')
-  @Patch(':id/active')
+  @Patch('is-active/:id')
   @HttpCode(HttpStatus.OK)
   async isActive(@Param('id') id: string) {
     return await this.projectService.isActive(id);
@@ -54,7 +55,13 @@ export class ProjectsController {
   @AuthRoles('ADMIN')
   @Get()
   @HttpCode(HttpStatus.OK)
-  async projects(@Body() dto: Projects) {
-    return await this.projectService.projects(dto);
+  async projects(
+    @Query('page') page: string,
+    @Query('limit') limit: string,
+    @Body() active: boolean,
+  ) {
+    const dto = { page: +page, limit: +limit };
+
+    return await this.projectService.projects(dto, active);
   }
 }

@@ -1,10 +1,10 @@
 import {
   Body,
   Controller,
-  Delete,
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Put,
   Req,
@@ -14,10 +14,9 @@ import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UseUploadFiles } from 'src/uploads/decorators/upload-file.decorator';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { AuthRoles } from 'src/auth/decorators/auth-roles.decorator';
 import type { Request } from 'express';
 import { Auth } from 'src/auth/decorators/auth.decorator';
-import { SendNotificationMessageDto } from './dto/send-notification-message.dto';
+import { SendNotificationMessageDto } from '../notification/dto/send-notification-message.dto';
 
 @Controller('task')
 export class TaskController {
@@ -47,7 +46,7 @@ export class TaskController {
   }
 
   @Auth()
-  @Put('send-review/:id')
+  @Patch('send-review/:id')
   @HttpCode(HttpStatus.OK)
   sendReviewTask(
     @Body() dto: SendNotificationMessageDto,
@@ -58,7 +57,7 @@ export class TaskController {
   }
 
   @Auth()
-  @Put('task-verification/:id')
+  @Patch('task-verification/:id')
   @HttpCode(HttpStatus.OK)
   taskVerification(
     @Body() dto: SendNotificationMessageDto,

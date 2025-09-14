@@ -12,7 +12,7 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { UpdateTaskData } from './interfaces';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import type { Request } from 'express';
-import { SendNotificationMessageDto } from './dto/send-notification-message.dto';
+import { SendNotificationMessageDto } from '../notification/dto/send-notification-message.dto';
 import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
@@ -245,8 +245,12 @@ export class TaskService {
       throw new NotFoundException('Задача не обнаружена');
     }
 
-    const recipients = task.executors.map((e) => e.id);
-    const isExecutor = recipients.includes(id);
+    const recipients = [
+      ...task.executors.map((e) => e.id),
+      task.project.creatorId,
+    ];
+
+    const isExecutor = recipients.includes(senderId);
 
     if (!isExecutor) {
       throw new ForbiddenException('У вас нет доступа к данной задаче');

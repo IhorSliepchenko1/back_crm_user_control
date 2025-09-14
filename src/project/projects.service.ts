@@ -3,9 +3,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ProjectDto } from './dto/project.dto';
 import { buildResponse } from 'src/common/utils/build-response';
 import { Participants } from './dto/participants.dto';
-import { Projects } from './dto/projects.dto';
 import type { Request } from 'express';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
+import { RenameProjectDto } from './dto/rename-project.dto';
+import { PaginationDto } from 'src/users/dto/pagination.dto';
 
 @Injectable()
 export class ProjectsService {
@@ -42,7 +43,7 @@ export class ProjectsService {
     return project;
   }
 
-  async renameProject(dto: ProjectDto, id: string) {
+  async renameProject(dto: RenameProjectDto, id: string) {
     await this.findProject(id);
     const { name } = dto;
 
@@ -64,6 +65,43 @@ export class ProjectsService {
       key === 'connect'
         ? { connect: ids.map((id) => ({ id })) }
         : { disconnect: ids.map((id) => ({ id })) };
+
+    if (key === 'disconnect') {
+      const tasksUserId = await this.prismaService.task.findMany({
+        where: {
+          projectId: id,
+        },
+
+        select: {
+          id: true,
+          executors: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      const filteredData = tasksUserId.map((taskItem) => {
+        taskItem.executors.filter((executor) => ids.includes(executor.id));
+      });
+
+      if (filteredData.length) {
+        await this.prismaService.$transaction(
+          tasksUserId.map((task) =>
+            this.prismaService.task.update({
+              where: {
+                id: task.id,
+              },
+
+              data: {
+                executors: { disconnect: ids.map((id) => ({ id })) },
+              },
+            }),
+          ),
+        );
+      }
+    }
 
     await this.prismaService.project.update({
       where: {
@@ -94,8 +132,8 @@ export class ProjectsService {
     return buildResponse('Статус проекта обновлён');
   }
 
-  async projects(dto: Projects) {
-    const { page, limit, active } = dto;
+  async projects(dto: PaginationDto, active: Boolean) {
+    const { page, limit } = dto;
     const currentPage = page ?? 1;
     const pageSize = limit ?? 10;
 
@@ -104,7 +142,7 @@ export class ProjectsService {
         skip: (currentPage - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
-        where: { active },
+        where: active as {},
 
         select: {
           name: true,
@@ -123,7 +161,7 @@ export class ProjectsService {
         },
       }),
 
-      this.prismaService.user.count(),
+      this.prismaService.project.count({ where: active as {} }),
     ]);
 
     const data = prevData.map((item) => {

@@ -17,7 +17,7 @@ import { RoleChangeDto } from './dto/role-change.dto';
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
-  @Post('add')
+  @Post()
   @AuthRoles('ADMIN')
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateRoleDto) {
@@ -35,7 +35,7 @@ export class RoleController {
   }
 
   @AuthRoles('ADMIN')
-  @Patch('user/:id')
+  @Patch('role/:id')
   @HttpCode(HttpStatus.OK)
   async roleChange(@Param('id') id: string, @Body() dto: RoleChangeDto) {
     return await this.roleService.roleChange(dto, id);

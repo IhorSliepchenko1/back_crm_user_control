@@ -56,7 +56,7 @@ export class UsersService {
 
     return user;
   }
-  async blockedOrUnblockedUser(id: string) {
+  async isActive(id: string) {
     const user = await this.findUser(id);
 
     await this.prismaService.user.update({

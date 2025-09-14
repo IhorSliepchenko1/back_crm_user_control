@@ -28,10 +28,10 @@ export class UsersController {
   }
 
   @AuthRoles('ADMIN')
-  @Patch('blocked/:id')
+  @Patch('is-active/:id')
   @HttpCode(HttpStatus.OK)
-  async blockedOrUnblockedUser(@Param('id') id: string) {
-    return await this.usersService.blockedOrUnblockedUser(id);
+  async isActive(@Param('id') id: string) {
+    return await this.usersService.isActive(id);
   }
 
   @Auth()
