@@ -7,10 +7,10 @@ import {
   MaxLength,
 } from 'class-validator';
 
-export class UpdateTaskDto {
+export class UpdateTaskCreatorDto {
+  @IsOptional()
   @IsString({ message: 'Название задачи - это строка' })
   @Length(5, 100, { message: 'Длина названия задачи 5-100 символов' })
-  @IsOptional()
   name: string;
 
   @IsOptional()
@@ -23,10 +23,10 @@ export class UpdateTaskDto {
   @MaxLength(2_500, { message: 'Максимальное к-во 2500 символов' })
   taskDescription?: string;
 
-  @IsString()
-  @IsOptional()
-  @MaxLength(2_500, { message: 'Максимальное к-во 2500 символов' })
-  executorDescription?: string;
+  // @IsString()
+  // @IsOptional()
+  // @MaxLength(2_500, { message: 'Максимальное к-во 2500 символов' })
+  // executorDescription?: string;
 
   @IsOptional()
   @IsArray({ message: 'Передайте массив пользователей' })
@@ -37,4 +37,9 @@ export class UpdateTaskDto {
   @IsArray({ message: 'Передайте массив пользователей' })
   @IsUUID('4', { each: true })
   executorsRemove: string[];
+
+  @IsOptional()
+  @IsArray({ message: 'Передайте массив файлов для удаления' })
+  @IsUUID('4', { each: true })
+  filesIdRemove: string[];
 }

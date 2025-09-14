@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Param,
   Patch,
+  Query,
   Req,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
@@ -18,14 +19,19 @@ export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Auth()
-  @Get()
+  @Get('me')
   @HttpCode(HttpStatus.OK)
-  currentUserNotifications(@Body() dto: PaginationDto, @Req() req: Request) {
+  currentUserNotifications(
+    @Query('page') page: string,
+    @Query('limit') limit: string,
+    @Req() req: Request,
+  ) {
+    const dto = { page: +page, limit: +limit };
     return this.notificationService.currentUserNotifications(dto, req);
   }
 
   @Auth()
-  @Get()
+  @Get('count-no-read-notification/me')
   @HttpCode(HttpStatus.OK)
   countNoReadNotifications(@Req() req: Request) {
     return this.notificationService.countNoReadNotifications(req);

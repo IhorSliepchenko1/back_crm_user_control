@@ -8,12 +8,13 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { buildResponse } from 'src/common/utils/build-response';
 import { UploadsService } from 'src/uploads/uploads.service';
-import { UpdateTaskDto } from './dto/update-task.dto';
 import { UpdateTaskData } from './interfaces';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import type { Request } from 'express';
 import { SendNotificationMessageDto } from '../notification/dto/send-notification-message.dto';
 import { NotificationService } from 'src/notification/notification.service';
+import { UpdateTaskCreatorDto } from './dto/update-task-creator.dto';
+import { UpdateTaskExecutorDto } from './dto/update-task-executor.dto';
 
 @Injectable()
 export class TaskService {
@@ -47,8 +48,6 @@ export class TaskService {
       throw new NotFoundException('Проект не обнаружен');
     }
 
-    const filePathTask: string[] = [];
-
     const { name, deadline, taskDescription, executors } = dto;
     const participants = project.participants.map((p) => p.id);
     const isAccess = executors.some((id) => !participants.includes(id));
@@ -73,33 +72,32 @@ export class TaskService {
     });
 
     if (files) {
-      filePathTask.push(...this.uploadsService.seveFiles(files));
-
-      await this.prismaService.$transaction(
-        filePathTask.map((fileName) =>
-          this.prismaService.files.create({
-            data: {
-              fileName,
-              type: 'filePathTask',
-              taskId: task.id,
-            },
-          }),
-        ),
-      );
+      const filePathTask = this.uploadsService.seveFiles(files);
+      await this.saveFiles(filePathTask, task.id, 'filePathTask');
     }
 
     return buildResponse('Новая задача добавлена');
   }
 
-  async updateTask(
-    dto: UpdateTaskDto,
-    id: string,
-    req: Request,
-    deleteFileName?: Array<string>,
-    files?: Array<Express.Multer.File>,
+  private async saveFiles(
+    filePathTask: Array<string>,
+    taskId: string,
+    type: 'filePathTask' | 'filePathExecutor',
   ) {
-    const { id: creatorId } = req.user as JwtPayload;
+    await this.prismaService.$transaction(
+      filePathTask.map((fileName) =>
+        this.prismaService.files.create({
+          data: {
+            fileName,
+            type,
+            taskId,
+          },
+        }),
+      ),
+    );
+  }
 
+  private async taskData(id: string) {
     const task = await this.prismaService.task.findUnique({
       where: { id },
 
@@ -120,46 +118,87 @@ export class TaskService {
             creatorId: true,
           },
         },
+
+        files: {
+          select: {
+            id: true,
+            type: true,
+          },
+        },
       },
     });
 
-    if (!task) {
-      throw new NotFoundException('Задача не обнаружена');
+    return task;
+  }
+
+  private async taskChangeExecutors(
+    arrayId: Array<string>,
+    taskId: string,
+    key: 'connect' | 'disconnect',
+  ) {
+    if (arrayId.length > 0) {
+      const executors =
+        key === 'connect'
+          ? { connect: arrayId.map((id) => ({ id })) }
+          : { disconnect: arrayId.map((id) => ({ id })) };
+
+      await this.prismaService.task.update({
+        where: { id: taskId },
+        data: {
+          executors,
+        },
+      });
+      return true;
     }
 
-    if (creatorId !== task.project.creatorId) {
-      throw new ForbiddenException('У вас нет прав доступа к данной задачу');
+    return false;
+  }
+
+  async updateTaskCreator(
+    dto: UpdateTaskCreatorDto,
+    id: string,
+    req: Request,
+    files?: Array<Express.Multer.File>,
+  ) {
+    const { id: creatorId } = req.user as JwtPayload;
+
+    const task = await this.taskData(id);
+
+    if (!task) {
+      throw new NotFoundException('Задача не обнаружена');
     }
 
     const {
       name,
       deadline,
       taskDescription,
-      executorDescription,
       executorsAdd,
       executorsRemove,
+      filesIdRemove,
     } = dto;
 
     const updateData: Partial<UpdateTaskData> = {};
     const currentName = task.name;
     const currentTaskDescription = task.taskDescription;
-    const currentExecutorDescription = task.executorDescription;
     const currentDeadline = new Date(task.deadline);
     const currentExecutors = task.executors.map((e) => e.id);
+    const currentFilesId = task.files.reduce<string[]>((acc, val) => {
+      if (val.type === 'filePathTask') {
+        acc.push(val.id);
+      }
+      return acc;
+    }, []);
+
+    if (creatorId !== task.project.creatorId) {
+      throw new ForbiddenException('У вас нет прав доступа к данной задачу');
+    }
 
     if (name && name !== currentName) {
-      updateData.name = currentName;
+      updateData.name = name;
     }
 
     if (taskDescription && taskDescription !== currentTaskDescription) {
       updateData.taskDescription = taskDescription;
-    }
-
-    if (
-      executorDescription &&
-      executorDescription !== currentExecutorDescription
-    ) {
-      updateData.executorDescription = executorDescription;
     }
 
     if (deadline) {
@@ -170,40 +209,109 @@ export class TaskService {
       }
     }
 
+    if (executorsRemove) {
+      const newExecutorsRemove = executorsRemove.filter((id) =>
+        currentExecutors.includes(id),
+      );
+
+      await this.taskChangeExecutors(newExecutorsRemove, id, 'disconnect');
+    }
+
     if (executorsAdd) {
       const newExecutors = executorsAdd.filter(
         (id) => !currentExecutors.includes(id),
       );
 
-      if (newExecutors.length > 0) {
-        await this.prismaService.task.update({
-          where: { id },
-
-          data: {
-            executors: {
-              connect: newExecutors.map((id) => ({ id })),
-            },
-          },
-        });
-      }
+      await this.taskChangeExecutors(newExecutors, id, 'connect');
     }
 
-    if (executorsRemove && !executorsAdd) {
-      const newExecutorsRemove = executorsRemove.filter((id) =>
-        currentExecutors.includes(id),
+    if (filesIdRemove) {
+      const newFilesRemove = filesIdRemove.filter((f) =>
+        currentFilesId.includes(id),
       );
 
-      if (newExecutorsRemove.length > 0) {
-        await this.prismaService.task.update({
-          where: { id },
+      await this.prismaService.$transaction(
+        newFilesRemove.map((id) =>
+          this.prismaService.files.delete({
+            where: { id },
+          }),
+        ),
+      );
+    }
 
-          data: {
-            executors: {
-              disconnect: newExecutorsRemove.map((id) => ({ id })),
-            },
-          },
-        });
+    if (files) {
+      const filePathTask = this.uploadsService.seveFiles(files);
+      await this.saveFiles(filePathTask, task.id, 'filePathTask');
+    }
+
+    await this.prismaService.task.update({
+      where: { id },
+      data: { ...updateData },
+    });
+
+    return buildResponse('Задача обновлена');
+  }
+
+  async updateTaskExecutor(
+    dto: UpdateTaskExecutorDto,
+    id: string,
+    req: Request,
+    files?: Array<Express.Multer.File>,
+  ) {
+    const { id: executorId } = req.user as JwtPayload;
+
+    const task = await this.taskData(id);
+
+    if (!task) {
+      throw new NotFoundException('Задача не обнаружена');
+    }
+
+    const recipients = new Set([
+      ...task.executors.map((e) => e.id),
+      task.project.creatorId,
+    ]);
+
+    const isExecutor = recipients.has(executorId);
+
+    if (!isExecutor) {
+      throw new ForbiddenException('У вас нет доступа к данной задаче');
+    }
+    const { executorDescription, filesIdRemove } = dto;
+
+    const updateData: Partial<UpdateTaskData> = {};
+    const currentFilesId = task.files.reduce<string[]>((acc, val) => {
+      if (val.type === 'filePathExecutor') {
+        acc.push(val.id);
       }
+      return acc;
+    }, []);
+
+    const currentExecutorDescription = task.executorDescription;
+
+    if (
+      executorDescription &&
+      executorDescription !== currentExecutorDescription
+    ) {
+      updateData.executorDescription = executorDescription;
+    }
+
+    if (filesIdRemove) {
+      const newFilesRemove = filesIdRemove.filter((id) =>
+        currentFilesId.includes(id),
+      );
+
+      await this.prismaService.$transaction(
+        newFilesRemove.map((id) =>
+          this.prismaService.files.delete({
+            where: { id },
+          }),
+        ),
+      );
+    }
+
+    if (files) {
+      const filePathTask = this.uploadsService.seveFiles(files);
+      await this.saveFiles(filePathTask, task.id, 'filePathExecutor');
     }
 
     await this.prismaService.task.update({
@@ -245,12 +353,12 @@ export class TaskService {
       throw new NotFoundException('Задача не обнаружена');
     }
 
-    const recipients = [
+    const recipients = new Set([
       ...task.executors.map((e) => e.id),
       task.project.creatorId,
-    ];
+    ]);
 
-    const isExecutor = recipients.includes(senderId);
+    const isExecutor = recipients.has(senderId);
 
     if (!isExecutor) {
       throw new ForbiddenException('У вас нет доступа к данной задаче');
@@ -270,10 +378,16 @@ export class TaskService {
     });
 
     const { message, subject } = dto;
+    const arrayRecipients: Array<string> = [];
+
+    recipients.forEach((id) => {
+      arrayRecipients.push(id);
+    });
+
     await this.notificationService.sendNotification(
       task.id,
       senderId,
-      recipients,
+      arrayRecipients,
       message,
       subject,
     );

@@ -13,10 +13,11 @@ import {
 import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UseUploadFiles } from 'src/uploads/decorators/upload-file.decorator';
-import { UpdateTaskDto } from './dto/update-task.dto';
 import type { Request } from 'express';
 import { Auth } from 'src/auth/decorators/auth.decorator';
 import { SendNotificationMessageDto } from '../notification/dto/send-notification-message.dto';
+import { UpdateTaskCreatorDto } from './dto/update-task-creator.dto';
+import { UpdateTaskExecutorDto } from './dto/update-task-executor.dto';
 
 @Controller('task')
 export class TaskController {
@@ -35,14 +36,29 @@ export class TaskController {
   }
 
   @Auth()
-  @Put(':id')
+  @Put('update-creator/:id')
   @HttpCode(HttpStatus.OK)
-  updateTask(
-    @Body() dto: UpdateTaskDto,
+  @UseUploadFiles()
+  updateTaskCreator(
+    @Body() dto: UpdateTaskCreatorDto,
     @Param('id') id: string,
     @Req() req: Request,
+    @UploadedFiles() files: Array<Express.Multer.File>,
   ) {
-    return this.taskService.updateTask(dto, id, req);
+    return this.taskService.updateTaskCreator(dto, id, req, files);
+  }
+
+  @Auth()
+  @Put('update-executor/:id')
+  @HttpCode(HttpStatus.OK)
+  @UseUploadFiles()
+  updateTaskExecutor(
+    @Body() dto: UpdateTaskExecutorDto,
+    @Param('id') id: string,
+    @Req() req: Request,
+    @UploadedFiles() files: Array<Express.Multer.File>,
+  ) {
+    return this.taskService.updateTaskExecutor(dto, id, req, files);
   }
 
   @Auth()
