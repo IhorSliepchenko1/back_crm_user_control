@@ -28,6 +28,13 @@ export class UsersController {
   }
 
   @AuthRoles('ADMIN')
+  @Get('user/:id')
+  @HttpCode(HttpStatus.OK)
+  async user(@Param('id') id: string) {
+    return await this.usersService.user(id);
+  }
+
+  @AuthRoles('ADMIN')
   @Patch('is-active/:id')
   @HttpCode(HttpStatus.OK)
   async isActive(@Param('id') id: string) {

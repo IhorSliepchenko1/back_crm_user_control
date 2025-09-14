@@ -153,6 +153,8 @@ export class ProjectsService {
             },
           },
 
+          participants: true,
+
           tasks: {
             select: {
               status: true,
@@ -196,6 +198,7 @@ export class ProjectsService {
         ...tasks,
         creator: item.creator.login,
         created_ad: item.createdAt,
+        count_participants: item.participants.length,
       };
     });
 

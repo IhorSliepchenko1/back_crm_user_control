@@ -108,6 +108,7 @@ model Notification {
 
 model NotificationRead {
   id             String       @id @default(uuid())
+  // когда будет писаться фронт переделать на булинь
   isRead         ReadStatus   @default(no_read) @map("is_read")
   recipientId    String       @map("recipient_id")
   recipient      User         @relation(fields: [recipientId], references: [id])
