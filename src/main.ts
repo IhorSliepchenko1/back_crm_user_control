@@ -14,8 +14,7 @@ async function bootstrap() {
     origin: 'http://localhost:5173',
     credentials: true,
   });
-  app.useGlobalPipes(new ValidationPipe());
-  app.useGlobalFilters(new HttpExceptionFilter());
+
   app.use(cookieParser());
 
   const uploads = path.join(process.cwd(), 'uploads');

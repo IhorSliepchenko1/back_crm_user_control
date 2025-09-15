@@ -12,16 +12,18 @@ import { UpdateTaskData } from './interfaces';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import type { Request } from 'express';
 import { SendNotificationMessageDto } from '../notification/dto/send-notification-message.dto';
-import { NotificationService } from 'src/notification/notification.service';
+// import { NotificationService } from 'src/notification/notification.service';
 import { UpdateTaskCreatorDto } from './dto/update-task-creator.dto';
 import { UpdateTaskExecutorDto } from './dto/update-task-executor.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class TaskService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly uploadsService: UploadsService,
-    private readonly notificationService: NotificationService,
+    // private readonly notificationService: NotificationService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async createTask(
@@ -384,13 +386,13 @@ export class TaskService {
       arrayRecipients.push(id);
     });
 
-    await this.notificationService.sendNotification(
-      task.id,
+    await this.eventEmitter.emitAsync('notification.send', {
+      taskId: task.id,
       senderId,
-      arrayRecipients,
+      recipients: arrayRecipients,
       message,
       subject,
-    );
+    });
 
     return buildResponse('Задача выслана на проверку');
   }
@@ -443,13 +445,13 @@ export class TaskService {
       },
     });
 
-    await this.notificationService.sendNotification(
-      task.id,
+    await this.eventEmitter.emitAsync('notification.send', {
+      taskId: task.id,
       creatorId,
       recipients,
       message,
       subject,
-    );
+    });
 
     return buildResponse('Ответ по проверке задачи отравлен');
   }

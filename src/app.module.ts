@@ -12,10 +12,17 @@ import { LoggerModule } from './common/logger/logger.module';
 import { ProjectsModule } from './project/projects.module';
 import { TaskModule } from './task/task.module';
 import { NotificationModule } from './notification/notification.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ListenersModule } from './listeners/listeners.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    EventEmitterModule.forRoot({
+      // global: true,
+      wildcard: true,
+      delimiter: '.',
+    }),
     PrismaModule,
     AuthModule,
     TokenModule,
@@ -25,6 +32,7 @@ import { NotificationModule } from './notification/notification.module';
     ProjectsModule,
     TaskModule,
     NotificationModule,
+    ListenersModule,
   ],
 
   controllers: [AppController],

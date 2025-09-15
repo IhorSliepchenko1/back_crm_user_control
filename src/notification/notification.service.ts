@@ -9,39 +9,6 @@ import { buildResponse } from 'src/common/utils/build-response';
 export class NotificationService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async sendNotification(
-    taskId: string,
-    senderId: string,
-    recipients: Array<string>,
-    message: string,
-    subject: string,
-  ) {
-    const notification = await this.prismaService.notification.create({
-      data: {
-        message,
-        subject,
-        senderId,
-        taskId,
-        recipients: {
-          connect: recipients.map((id) => ({ id })),
-        },
-      },
-    });
-
-    await this.prismaService.$transaction(
-      recipients.map((id) =>
-        this.prismaService.notificationRead.create({
-          data: {
-            recipientId: id,
-            notificationId: notification.id,
-          },
-        }),
-      ),
-    );
-
-    return notification.id;
-  }
-
   async currentUserNotifications(dto: PaginationDto, req: Request) {
     const { id } = req.user as JwtPayload;
 
