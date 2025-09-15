@@ -1,10 +1,10 @@
 import { OnEvent } from '@nestjs/event-emitter';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import type { NotificationPayload } from './listeners.interface';
+import type { NotificationPayload } from './interfaces/notification-payload.interface';
 
 @Injectable()
-export class Listeners {
+export class NotificationListener {
   constructor(private readonly prismaService: PrismaService) {}
 
   @OnEvent('notification.send')

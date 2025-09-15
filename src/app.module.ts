@@ -13,7 +13,7 @@ import { ProjectsModule } from './project/projects.module';
 import { TaskModule } from './task/task.module';
 import { NotificationModule } from './notification/notification.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { ListenersModule } from './listeners/listeners.module';
+// import { ListenersModule } from './listeners/notification-listeners.module';
 
 @Module({
   imports: [
@@ -32,7 +32,7 @@ import { ListenersModule } from './listeners/listeners.module';
     ProjectsModule,
     TaskModule,
     NotificationModule,
-    ListenersModule,
+    // ListenersModule,
   ],
 
   controllers: [AppController],
