@@ -5,13 +5,13 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseIntPipe,
   Patch,
   Query,
   Req,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import type { Request } from 'express';
-import { PaginationDto } from 'src/users/dto/pagination.dto';
 import { Auth } from 'src/auth/decorators/auth.decorator';
 
 @Controller('notification')
@@ -22,12 +22,14 @@ export class NotificationController {
   @Get('me')
   @HttpCode(HttpStatus.OK)
   currentUserNotifications(
-    @Query('page') page: string,
-    @Query('limit') limit: string,
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
     @Req() req: Request,
   ) {
-    const dto = { page: +page, limit: +limit };
-    return this.notificationService.currentUserNotifications(dto, req);
+    return this.notificationService.currentUserNotifications(
+      { page, limit },
+      req,
+    );
   }
 
   @Auth()

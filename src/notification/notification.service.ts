@@ -99,10 +99,11 @@ export class NotificationService {
         isRead: notification.notificationRead[0].isRead,
       };
     });
-
+    const count_pages = Math.ceil(total / limit);
     return buildResponse('', {
       data,
       total,
+      count_pages,
       page,
       limit,
     });

@@ -132,8 +132,8 @@ export class ProjectsService {
     return buildResponse('Статус проекта обновлён');
   }
 
-  async projects(dto: PaginationDto, active: Boolean) {
-    const { page, limit } = dto;
+  async projects(dto: PaginationDto) {
+    const { page, limit, active } = dto;
     const currentPage = page ?? 1;
     const pageSize = limit ?? 10;
 
@@ -142,7 +142,7 @@ export class ProjectsService {
         skip: (currentPage - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
-        where: active as {},
+        where: { active },
 
         select: {
           name: true,
@@ -163,7 +163,7 @@ export class ProjectsService {
         },
       }),
 
-      this.prismaService.project.count({ where: active as {} }),
+      this.prismaService.project.count({ where: { active } }),
     ]);
 
     const data = prevData.map((item) => {
@@ -202,9 +202,11 @@ export class ProjectsService {
       };
     });
 
+    const count_pages = Math.ceil(total / limit);
     return buildResponse('Данные получены', {
       data,
       total,
+      count_pages,
       page,
       limit,
     });

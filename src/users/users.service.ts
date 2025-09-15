@@ -25,8 +25,8 @@ export class UsersService {
 
     const [userData, total] = await this.prismaService.$transaction([
       this.prismaService.user.findMany({
-        skip: (+currentPage - 1) * +pageSize,
-        take: +pageSize,
+        skip: (currentPage - 1) * pageSize,
+        take: pageSize,
         orderBy: { createdAt: 'desc' },
 
         select: {
@@ -88,10 +88,11 @@ export class UsersService {
         ...tasks,
       };
     });
-
+    const count_pages = Math.ceil(total / limit);
     return buildResponse('', {
       data,
       total,
+      count_pages,
       page,
       limit,
     });

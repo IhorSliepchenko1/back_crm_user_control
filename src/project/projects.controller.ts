@@ -5,6 +5,8 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseBoolPipe,
+  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -56,12 +58,10 @@ export class ProjectsController {
   @Get()
   @HttpCode(HttpStatus.OK)
   async projects(
-    @Query('page') page: string,
-    @Query('limit') limit: string,
-    @Body() active: boolean,
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('active', ParseBoolPipe) active: boolean,
   ) {
-    const dto = { page: +page, limit: +limit };
-
-    return await this.projectService.projects(dto, active);
+    return await this.projectService.projects({ page, limit, active });
   }
 }
