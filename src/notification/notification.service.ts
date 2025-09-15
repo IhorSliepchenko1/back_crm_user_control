@@ -96,7 +96,7 @@ export class NotificationService {
         senderId: notification.senderId,
         recipients: notification.recipients.map((r) => r.login),
         taskId: notification.taskId,
-        isRead: notification.notificationRead[0].isRead === 'read',
+        isRead: notification.notificationRead[0].isRead,
       };
     });
 
@@ -114,7 +114,7 @@ export class NotificationService {
     const count = await this.prismaService.notificationRead.count({
       where: {
         recipientId: id,
-        isRead: 'no_read',
+        isRead: false,
       },
     });
 
@@ -141,7 +141,7 @@ export class NotificationService {
     await this.prismaService.notificationRead.update({
       where: { id: idNotification },
       data: {
-        isRead: 'read',
+        isRead: true,
       },
     });
 
