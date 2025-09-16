@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -30,7 +31,7 @@ export class AuthService {
     const { login, password, adminCode } = dto;
 
     if (!login || !password) {
-      throw new ConflictException('Данные обязательны');
+      throw new BadRequestException('Отсутствует логин или пароль');
     }
 
     const isUser = await this.prismaService.user.findUnique({
@@ -75,8 +76,9 @@ export class AuthService {
   }
   async login(res: Response, dto: LoginDto): Promise<ApiResponse> {
     const { login, password, remember } = dto;
+
     if (!login || !password) {
-      throw new ConflictException('Данные обязательны');
+      throw new BadRequestException('Отсутствует логин или пароль');
     }
 
     const user = await this.prismaService.user.findUnique({
@@ -135,11 +137,16 @@ export class AuthService {
   }
   async refresh(req: Request, res: Response): Promise<ApiResponse> {
     const refreshToken = req.cookies['refreshToken'];
+    const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 
-    if (!refreshToken)
-      throw new UnauthorizedException(
-        'Данные устарели, выполните вход в систему',
-      );
+    // if (!refreshToken)
+    //   throw new UnauthorizedException(
+    //     'Данные устарели, выполните вход в систему',
+    //   );
+
+    // if (!payload) {
+    //   throw new UnauthorizedException('Пользователь не авторизован');
+    // }
 
     const isRevoked = await this.prismaService.refreshToken.findUnique({
       where: {
@@ -148,13 +155,7 @@ export class AuthService {
     });
 
     if (!isRevoked || isRevoked.revoked)
-      throw new UnauthorizedException('Токен не активен');
-
-    const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
-
-    if (!payload) {
-      throw new UnauthorizedException('Пользователь не авторизован');
-    }
+      throw new ConflictException('Токен не активен');
 
     const userInfo = await this.prismaService.user.findUnique({
       where: {

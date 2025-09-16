@@ -1,15 +1,19 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Response, Request } from 'express';
 import parse from 'parse-duration';
 import { ApiResponse } from 'src/common/interfaces';
-import { isDev } from 'src/common/utils/is-dev.utils';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { Roles } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { buildResponse } from 'src/utils/build-response';
-
+import { isDev } from 'src/utils/is-dev.utils';
 
 @Injectable()
 export class TokenService {
@@ -90,14 +94,14 @@ export class TokenService {
     const refreshToken = req.cookies['refreshToken'];
 
     if (!refreshToken)
-      throw new UnauthorizedException(
-        'Данные устарели, выполните вход в систему',
-      );
+      throw new UnauthorizedException('Пользователь не авторизован');
 
     const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 
     if (!payload) {
-      throw new UnauthorizedException('Пользователь не авторизован');
+      throw new ConflictException(
+        'Сервер не смог распознать данные для верификации',
+      );
     }
 
     this.setRefreshTokenCookie(res, '', 0);
@@ -118,6 +122,12 @@ export class TokenService {
       },
     });
 
+    if (!findLiveTokens) {
+      throw new NotFoundException(
+        'Данный пользователь не имеет активных токенов',
+      );
+    }
+
     if (findLiveTokens && findLiveTokens.length >= 1) {
       const tokenIds = findLiveTokens.map((t) => t.id);
 
@@ -134,6 +144,6 @@ export class TokenService {
       });
     }
 
-    return true;
+    return buildResponse('Выполнен выход из системы');
   }
 }

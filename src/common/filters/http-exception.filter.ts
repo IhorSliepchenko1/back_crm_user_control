@@ -15,10 +15,24 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const status = exception.getStatus();
 
     const exceptionResponse = exception.getResponse();
-    const message =
-      typeof exceptionResponse === 'string'
-        ? exceptionResponse
-        : (exceptionResponse as any).message || 'Произошла ошибка';
+
+    let message: string = 'Произошла ошибка';
+    if (typeof exceptionResponse === 'string') {
+      message = exceptionResponse;
+    } else {
+      const statusCode = (exceptionResponse as any).statusCode;
+      const messageResp = (exceptionResponse as any).message;
+
+      switch (statusCode) {
+        case 401:
+          message = 'Доступ отклонён, войдите в систему и попробуйте снова';
+          break;
+
+        default:
+          message = messageResp;
+          break;
+      }
+    }
 
     res.status(status).json({
       success: false,
