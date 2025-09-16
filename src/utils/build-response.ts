@@ -1,4 +1,4 @@
-import { ApiResponse } from "../interfaces";
+import { ApiResponse } from "src/common/interfaces";
 
 export function buildResponse<T = undefined>(
   message: string,

@@ -3,7 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import type { Request } from 'express';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { PaginationDto } from 'src/users/dto/pagination.dto';
-import { buildResponse } from 'src/common/utils/build-response';
+import { buildResponse } from 'src/utils/build-response';
 
 @Injectable()
 export class NotificationService {

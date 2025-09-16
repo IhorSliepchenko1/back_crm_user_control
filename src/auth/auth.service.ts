@@ -15,7 +15,7 @@ import { ConfigService } from '@nestjs/config';
 import { Roles } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { ApiResponse } from 'src/common/interfaces';
-import { buildResponse } from 'src/common/utils/build-response';
+import { buildResponse } from 'src/utils/build-response';
 
 @Injectable()
 export class AuthService {
@@ -71,7 +71,7 @@ export class AuthService {
       },
     });
 
-    return buildResponse('Новый ползователь добавлен');
+    return buildResponse('Новый пользователь добавлен');
   }
   async login(res: Response, dto: LoginDto): Promise<ApiResponse> {
     const { login, password, remember } = dto;

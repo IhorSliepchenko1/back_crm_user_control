@@ -5,7 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { buildResponse } from 'src/common/utils/build-response';
+import { buildResponse } from 'src/utils/build-response';
+
 import { RenameUserDto } from './dto/rename-user.dto';
 import { ChangePassword } from './dto/change-password.dto';
 import * as argon2 from 'argon2';

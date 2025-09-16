@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
-import { buildResponse } from 'src/common/utils/build-response';
+import { buildResponse } from 'src/utils/build-response';
+
 import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateTaskData } from './interfaces/update-task-data.interface';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';

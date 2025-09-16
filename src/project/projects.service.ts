@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ProjectDto } from './dto/project.dto';
-import { buildResponse } from 'src/common/utils/build-response';
+import { buildResponse } from 'src/utils/build-response';
+
 import { Participants } from './dto/participants.dto';
 import type { Request } from 'express';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';

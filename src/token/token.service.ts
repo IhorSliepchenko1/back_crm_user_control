@@ -8,7 +8,8 @@ import { isDev } from 'src/common/utils/is-dev.utils';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { Roles } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { buildResponse } from 'src/common/utils/build-response';
+import { buildResponse } from 'src/utils/build-response';
+
 
 @Injectable()
 export class TokenService {
