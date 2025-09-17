@@ -28,6 +28,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
           message = 'Доступ отклонён, войдите в систему и попробуйте снова';
           break;
 
+        case 403:
+          message = 'У вас недостаточно прав доступа';
+          break;
+
         default:
           message = messageResp;
           break;

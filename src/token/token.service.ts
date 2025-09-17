@@ -92,17 +92,7 @@ export class TokenService {
 
   async logout(res: Response, req: Request): Promise<ApiResponse> {
     const refreshToken = req.cookies['refreshToken'];
-
-    if (!refreshToken)
-      throw new UnauthorizedException('Пользователь не авторизован');
-
     const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
-
-    if (!payload) {
-      throw new ConflictException(
-        'Сервер не смог распознать данные для верификации',
-      );
-    }
 
     this.setRefreshTokenCookie(res, '', 0);
     await this.deactivateTokens(payload.id);

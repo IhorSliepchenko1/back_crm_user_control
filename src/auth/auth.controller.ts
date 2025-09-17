@@ -21,6 +21,7 @@ import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCookieAuth,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -36,7 +37,8 @@ export class AuthController {
 
   @ApiOperation({
     summary: 'Создание аккаунта',
-    description: 'Создание нового аккаунта',
+    description:
+      'Создание нового аккаунта (доступ к созданию только у роли - ADMIN)',
   })
   @ApiOkResponse({
     description: 'Новый пользователь добавлен',
@@ -52,6 +54,9 @@ export class AuthController {
   })
   @ApiUnauthorizedResponse({
     description: 'Доступ отклонён, войдите в систему и попробуйте снова',
+  })
+  @ApiForbiddenResponse({
+    description: 'У вас недостаточно прав доступа',
   })
   @AuthRoles('ADMIN')
   @Post('register')
@@ -101,11 +106,8 @@ export class AuthController {
       example: { success: true, message: 'Выполнен выход из системы' },
     },
   })
-  @ApiConflictResponse({
-    description: 'Сервер не смог распознать данные для верификации',
-  })
   @ApiUnauthorizedResponse({
-    description: 'Пользователь не авторизован',
+    description: 'Доступ отклонён, войдите в систему и попробуйте снова',
   })
   @Auth()
   @Post('logout')

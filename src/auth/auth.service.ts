@@ -139,15 +139,6 @@ export class AuthService {
     const refreshToken = req.cookies['refreshToken'];
     const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 
-    // if (!refreshToken)
-    //   throw new UnauthorizedException(
-    //     'Данные устарели, выполните вход в систему',
-    //   );
-
-    // if (!payload) {
-    //   throw new UnauthorizedException('Пользователь не авторизован');
-    // }
-
     const isRevoked = await this.prismaService.refreshToken.findUnique({
       where: {
         tokenHash: refreshToken,
