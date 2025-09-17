@@ -102,6 +102,20 @@ export class AuthService {
     if (!verifyPassword) {
       throw new UnauthorizedException('Не верный логин или пароль');
     }
+
+    const checkSession = await this.prismaService.refreshToken.findMany({
+      where: {
+        userId: user.id,
+        revoked: false,
+      },
+    });
+
+    if (checkSession.length) {
+      throw new ConflictException(
+        'Ваша сессия активна, что бы выполнить вход заново выйдите из системы',
+      );
+    }
+
     const roles = user.roles.map((n) => n.name);
     const payload = { ...user, roles };
 

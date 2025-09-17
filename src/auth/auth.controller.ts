@@ -81,7 +81,7 @@ export class AuthController {
     description: 'Отсутствует логин или пароль',
   })
   @ApiConflictResponse({
-    description: 'Пользователь уже зарегистирован',
+    description: 'Ваша сессия активна, что бы выполнить вход заново выйдите из системы',
   })
   @ApiUnauthorizedResponse({
     description: 'Не верный логин или пароль',
