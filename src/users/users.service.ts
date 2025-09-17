@@ -167,7 +167,7 @@ export class UsersService {
     return buildResponse('Информация о пользователе', { data });
   }
 
-  private async findUser(id: string) {
+  async findUser(id: string) {
     const user = await this.prismaService.user.findUnique({
       where: {
         id,

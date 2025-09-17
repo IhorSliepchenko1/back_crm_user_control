@@ -1,16 +1,28 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import type { Request } from 'express';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { PaginationDto } from 'src/users/dto/pagination.dto';
 import { buildResponse } from 'src/utils/build-response';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class NotificationService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly userService: UsersService,
+  ) {}
 
   async currentUserNotifications(dto: PaginationDto, req: Request) {
     const { id } = req.user as JwtPayload;
+
+    await this.userService.findUser(id);
 
     const { page, limit } = dto;
 
@@ -32,13 +44,30 @@ export class NotificationService {
         },
 
         select: {
+          id: true,
           subject: true,
           message: true,
-          senderId: true,
+
+          sender: {
+            select: {
+              login: true,
+              id: true,
+            },
+          },
+
           recipients: true,
-          taskId: true,
+
+          task: {
+            select: {
+              name: true,
+              id: true,
+            },
+          },
+
           notificationRead: {
             select: {
+              id: true,
+              recipientId: true,
               isRead: true,
             },
           },
@@ -58,16 +87,23 @@ export class NotificationService {
 
     const data = notifications.map((notification) => {
       return {
+        read_id:
+          notification.notificationRead.find((f) => f.recipientId === id)?.id ||
+          '',
+        read_status:
+          notification.notificationRead.find((f) => f.recipientId === id)
+            ?.isRead || false,
         subject: notification.subject,
         message: notification.message,
-        senderId: notification.senderId,
+        sender_name: notification.sender.login,
+        sender_id: notification.sender.id,
         recipients: notification.recipients.map((r) => r.login),
-        taskId: notification.taskId,
-        isRead: notification.notificationRead[0].isRead,
+        task_name: notification.task.name,
+        task_id: notification.task.id,
       };
     });
     const count_pages = Math.ceil(total / limit);
-    return buildResponse('', {
+    return buildResponse('Ваши уведомления', {
       data,
       total,
       count_pages,
@@ -78,6 +114,8 @@ export class NotificationService {
 
   async countNoReadNotifications(req: Request) {
     const { id } = req.user as JwtPayload;
+
+    await this.userService.findUser(id);
 
     const count = await this.prismaService.notificationRead.count({
       where: {
@@ -94,11 +132,18 @@ export class NotificationService {
   async readNotification(idNotification: string, req: Request) {
     const { id } = req.user as JwtPayload;
 
+    await this.userService.findUser(id);
+
     const notification = await this.prismaService.notificationRead.findUnique({
       where: {
         id: idNotification,
       },
     });
+
+    if (!notification)
+      throw new BadRequestException(
+        'Вы передали несуществующий id уведомления',
+      );
 
     if (notification && notification.recipientId !== id) {
       throw new ForbiddenException(
