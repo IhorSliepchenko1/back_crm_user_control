@@ -25,12 +25,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
       switch (statusCode) {
         case 401:
-          message = 'Доступ отклонён, войдите в систему и попробуйте снова';
-          break;
+          if (messageResp === 'Unauthorized') {
+            message = 'Доступ отклонён, войдите в систему и попробуйте снова';
+            break;
+          }
 
         case 403:
-          message = 'У вас недостаточно прав доступа';
-          break;
+          if (messageResp === 'Forbidden') {
+            message = 'У вас недостаточно прав доступа';
+            break;
+          }
 
         default:
           message = messageResp;

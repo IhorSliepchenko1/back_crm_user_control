@@ -1,21 +1,47 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ProjectDto } from './dto/project.dto';
 import { buildResponse } from 'src/utils/build-response';
-
 import { Participants } from './dto/participants.dto';
 import type { Request } from 'express';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { RenameProjectDto } from './dto/rename-project.dto';
 import { PaginationDto } from 'src/users/dto/pagination.dto';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly userService: UsersService,
+  ) {}
 
   async createProject(dto: ProjectDto, req: Request) {
     const { id: creatorId } = req.user as JwtPayload;
+
+    await this.userService.findUser(creatorId);
+
     const { name, participants } = dto;
+
+    const isExistParticipants = await this.prismaService.user.findMany({
+      where: {
+        id: {
+          in: participants,
+        },
+      },
+    });
+
+    if (isExistParticipants.length !== participants.length) {
+      throw new BadRequestException(
+        'Пользователи переданные вам не все содержаться на сервере',
+      );
+    }
 
     await this.prismaService.project.create({
       data: {
@@ -44,10 +70,19 @@ export class ProjectsService {
     return project;
   }
 
-  async renameProject(dto: RenameProjectDto, id: string) {
-    await this.findProject(id);
-    const { name } = dto;
+  async renameProject(dto: RenameProjectDto, id: string, req: Request) {
+    const { id: creatorId } = req.user as JwtPayload;
+    await this.userService.findUser(creatorId);
 
+    const project = await this.findProject(id);
+
+    if (creatorId !== project.creatorId) {
+      throw new ForbiddenException(
+        'Право менять название проекта есть только у создателя проекта',
+      );
+    }
+
+    const { name } = dto;
     await this.prismaService.project.update({
       where: { id },
       data: {
@@ -58,8 +93,16 @@ export class ProjectsService {
     return buildResponse('Проект переименован');
   }
 
-  async participantsProject(dto: Participants, id: string) {
+  async participantsProject(dto: Participants, id: string, req: Request) {
+    const { id: creatorId } = req.user as JwtPayload;
+    await this.userService.findUser(creatorId);
     const project = await this.findProject(id);
+
+    if (creatorId !== project.creatorId) {
+      throw new ForbiddenException(
+        'Право менять участников проекта есть только у создателя проекта',
+      );
+    }
     const { ids, key } = dto;
 
     const participants =
@@ -117,8 +160,16 @@ export class ProjectsService {
     return buildResponse('Участники проекта обновлены');
   }
 
-  async isActive(id: string) {
+  async isActive(id: string, req: Request) {
+    const { id: creatorId } = req.user as JwtPayload;
+    await this.userService.findUser(creatorId);
     const project = await this.findProject(id);
+
+    if (creatorId !== project.creatorId) {
+      throw new ForbiddenException(
+        'Право менять статус проекта есть только у создателя проекта',
+      );
+    }
 
     await this.prismaService.project.update({
       where: {
@@ -200,6 +251,7 @@ export class ProjectsService {
         creator: item.creator.login,
         created_ad: item.createdAt,
         count_participants: item.participants.length,
+        is_active: active
       };
     });
 
