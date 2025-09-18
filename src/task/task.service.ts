@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -7,34 +8,33 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { buildResponse } from 'src/utils/build-response';
-
 import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateTaskData } from './interfaces/update-task-data.interface';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import type { Request } from 'express';
 import { SendNotificationMessageDto } from '../notification/dto/send-notification-message.dto';
-// import { NotificationService } from 'src/notification/notification.service';
 import { UpdateTaskCreatorDto } from './dto/update-task-creator.dto';
 import { UpdateTaskExecutorDto } from './dto/update-task-executor.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class TaskService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly uploadsService: UploadsService,
-    // private readonly notificationService: NotificationService,
     private eventEmitter: EventEmitter2,
+    private readonly userService: UsersService,
   ) {}
 
   async createTask(
     dto: CreateTaskDto,
-    id: string,
+    projectId: string,
     files: Array<Express.Multer.File>,
   ) {
     const project = await this.prismaService.project.findUnique({
       where: {
-        id,
+        id: projectId,
       },
 
       select: {
@@ -56,7 +56,7 @@ export class TaskService {
     const isAccess = executors.some((id) => !participants.includes(id));
 
     if (isAccess) {
-      throw new ConflictException(
+      throw new BadRequestException(
         'Вы передали участника не имеющего доступ к данному проекту',
       );
     }
@@ -66,7 +66,7 @@ export class TaskService {
         name,
         deadline,
         taskDescription,
-        projectId: id,
+        projectId,
 
         executors: {
           connect: executors.map((id) => ({ id })),
@@ -99,7 +99,105 @@ export class TaskService {
       ),
     );
   }
+  async updateTaskCreator(
+    dto: UpdateTaskCreatorDto,
+    taskId: string,
+    req: Request,
+    files?: Array<Express.Multer.File>,
+  ) {
+    const { id: creatorId } = req.user as JwtPayload;
 
+    await this.userService.findUser(creatorId);
+
+    const task = await this.taskData(taskId);
+
+    if (!task) {
+      throw new NotFoundException('Задача не обнаружена');
+    }
+
+    const {
+      name,
+      deadline,
+      taskDescription,
+      executorsAdd,
+      executorsRemove,
+      filesIdRemove,
+    } = dto;
+
+    const updateData: Partial<UpdateTaskData> = {};
+    const currentName = task.name;
+    const currentTaskDescription = task.taskDescription;
+    const currentDeadline = new Date(task.deadline);
+    const currentExecutors = task.executors.map((e) => e.id);
+    const currentFilesId = task.files.reduce<string[]>((acc, val) => {
+      if (val.type === 'filePathTask') {
+        acc.push(val.id);
+      }
+      return acc;
+    }, []);
+
+    if (creatorId !== task.project.creatorId) {
+      throw new ForbiddenException('У вас нет прав доступа к данной задачу');
+    }
+
+    if (name && name !== currentName) {
+      updateData.name = name;
+    }
+
+    if (taskDescription && taskDescription !== currentTaskDescription) {
+      updateData.taskDescription = taskDescription;
+    }
+
+    if (deadline) {
+      const newDeadline = new Date(deadline);
+
+      if (newDeadline !== currentDeadline) {
+        updateData.deadline = deadline;
+      }
+    }
+
+    if (executorsRemove) {
+      const newExecutorsRemove = executorsRemove.filter((id) =>
+        currentExecutors.includes(id),
+      );
+
+      await this.taskChangeExecutors(newExecutorsRemove, taskId, 'disconnect');
+    }
+
+    if (executorsAdd) {
+      const newExecutors = executorsAdd.filter(
+        (id) => !currentExecutors.includes(id),
+      );
+
+      await this.taskChangeExecutors(newExecutors, taskId, 'connect');
+    }
+
+    if (filesIdRemove) {
+      const newFilesRemove = filesIdRemove.filter((f) =>
+        currentFilesId.includes(taskId),
+      );
+
+      await this.prismaService.$transaction(
+        newFilesRemove.map((id) =>
+          this.prismaService.files.delete({
+            where: { id },
+          }),
+        ),
+      );
+    }
+
+    if (files) {
+      const filePathTask = this.uploadsService.seveFiles(files);
+      await this.saveFiles(filePathTask, task.id, 'filePathTask');
+    }
+
+    await this.prismaService.task.update({
+      where: { id: taskId },
+      data: { ...updateData },
+    });
+
+    return buildResponse('Задача обновлена');
+  }
   private async taskData(id: string) {
     const task = await this.prismaService.task.findUnique({
       where: { id },
@@ -157,113 +255,15 @@ export class TaskService {
     return false;
   }
 
-  async updateTaskCreator(
-    dto: UpdateTaskCreatorDto,
-    id: string,
-    req: Request,
-    files?: Array<Express.Multer.File>,
-  ) {
-    const { id: creatorId } = req.user as JwtPayload;
-
-    const task = await this.taskData(id);
-
-    if (!task) {
-      throw new NotFoundException('Задача не обнаружена');
-    }
-
-    const {
-      name,
-      deadline,
-      taskDescription,
-      executorsAdd,
-      executorsRemove,
-      filesIdRemove,
-    } = dto;
-
-    const updateData: Partial<UpdateTaskData> = {};
-    const currentName = task.name;
-    const currentTaskDescription = task.taskDescription;
-    const currentDeadline = new Date(task.deadline);
-    const currentExecutors = task.executors.map((e) => e.id);
-    const currentFilesId = task.files.reduce<string[]>((acc, val) => {
-      if (val.type === 'filePathTask') {
-        acc.push(val.id);
-      }
-      return acc;
-    }, []);
-
-    if (creatorId !== task.project.creatorId) {
-      throw new ForbiddenException('У вас нет прав доступа к данной задачу');
-    }
-
-    if (name && name !== currentName) {
-      updateData.name = name;
-    }
-
-    if (taskDescription && taskDescription !== currentTaskDescription) {
-      updateData.taskDescription = taskDescription;
-    }
-
-    if (deadline) {
-      const newDeadline = new Date(deadline);
-
-      if (newDeadline !== currentDeadline) {
-        updateData.deadline = deadline;
-      }
-    }
-
-    if (executorsRemove) {
-      const newExecutorsRemove = executorsRemove.filter((id) =>
-        currentExecutors.includes(id),
-      );
-
-      await this.taskChangeExecutors(newExecutorsRemove, id, 'disconnect');
-    }
-
-    if (executorsAdd) {
-      const newExecutors = executorsAdd.filter(
-        (id) => !currentExecutors.includes(id),
-      );
-
-      await this.taskChangeExecutors(newExecutors, id, 'connect');
-    }
-
-    if (filesIdRemove) {
-      const newFilesRemove = filesIdRemove.filter((f) =>
-        currentFilesId.includes(id),
-      );
-
-      await this.prismaService.$transaction(
-        newFilesRemove.map((id) =>
-          this.prismaService.files.delete({
-            where: { id },
-          }),
-        ),
-      );
-    }
-
-    if (files) {
-      const filePathTask = this.uploadsService.seveFiles(files);
-      await this.saveFiles(filePathTask, task.id, 'filePathTask');
-    }
-
-    await this.prismaService.task.update({
-      where: { id },
-      data: { ...updateData },
-    });
-
-    return buildResponse('Задача обновлена');
-  }
-
   async updateTaskExecutor(
     dto: UpdateTaskExecutorDto,
-    id: string,
+    taskId: string,
     req: Request,
     files?: Array<Express.Multer.File>,
   ) {
     const { id: executorId } = req.user as JwtPayload;
-
-    const task = await this.taskData(id);
+    await this.userService.findUser(executorId);
+    const task = await this.taskData(taskId);
 
     if (!task) {
       throw new NotFoundException('Задача не обнаружена');
@@ -318,7 +318,7 @@ export class TaskService {
     }
 
     await this.prismaService.task.update({
-      where: { id },
+      where: { id: taskId },
       data: { ...updateData },
     });
 
@@ -327,13 +327,14 @@ export class TaskService {
 
   async sendReviewTask(
     dto: SendNotificationMessageDto,
-    id: string,
+    taskId: string,
     req: Request,
   ) {
     const { id: senderId } = req.user as JwtPayload;
+    await this.userService.findUser(senderId);
 
     const task = await this.prismaService.task.findUnique({
-      where: { id },
+      where: { id: taskId },
 
       select: {
         id: true,
@@ -374,7 +375,7 @@ export class TaskService {
     }
 
     await this.prismaService.task.update({
-      where: { id },
+      where: { id: taskId },
       data: {
         status: 'IN_REVIEW',
       },
@@ -400,13 +401,14 @@ export class TaskService {
 
   async taskVerification(
     dto: SendNotificationMessageDto,
-    id: string,
+    taskId: string,
     req: Request,
   ) {
     const { id: creatorId } = req.user as JwtPayload;
+    await this.userService.findUser(creatorId);
 
     const task = await this.prismaService.task.findUnique({
-      where: { id },
+      where: { id: taskId },
 
       select: {
         id: true,
@@ -440,7 +442,7 @@ export class TaskService {
     const { message, subject, status } = dto;
 
     await this.prismaService.task.update({
-      where: { id },
+      where: { id: taskId },
       data: {
         status,
       },

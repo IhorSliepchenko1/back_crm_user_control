@@ -4,7 +4,7 @@ import { IsOptional, MaxLength } from 'class-validator';
 
 export class SendNotificationMessageDto {
   @ApiProperty({
-    example: 'Я выполнил задачу, будь-те добры, проверьте её. Спасибо!',
+    example: 'Какое то сообщение. Спасибо!',
     description: 'Текст уведомления',
   })
   @MaxLength(2_500, { message: 'Максимальная длина - 2500 символов' })

@@ -20,7 +20,6 @@ import { Participants } from './dto/participants.dto';
 import { RenameProjectDto } from './dto/rename-project.dto';
 import {
   ApiBadRequestResponse,
-  ApiConflictResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
