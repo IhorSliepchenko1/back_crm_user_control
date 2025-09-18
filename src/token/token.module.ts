@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TokenService } from './token.service';
-import { TokenController } from './token.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { getJwtConfig } from 'src/common/config/jwt.config';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
@@ -12,8 +12,8 @@ import { getJwtConfig } from 'src/common/config/jwt.config';
       inject: [ConfigService],
       useFactory: getJwtConfig,
     }),
+    UsersModule,
   ],
-  controllers: [TokenController],
   providers: [TokenService],
   exports: [TokenService],
 })

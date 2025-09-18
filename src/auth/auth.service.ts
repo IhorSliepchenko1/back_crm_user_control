@@ -17,6 +17,7 @@ import { Roles } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { ApiResponse } from 'src/common/interfaces';
 import { buildResponse } from 'src/utils/build-response';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +26,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
+    private readonly userService: UsersService,
   ) {}
 
   async register(dto: RegisterDto): Promise<ApiResponse> {
@@ -90,6 +92,7 @@ export class AuthService {
         id: true,
         password: true,
         roles: true,
+        blocked: true,
       },
     });
 
@@ -103,6 +106,12 @@ export class AuthService {
       throw new UnauthorizedException('Не верный логин или пароль');
     }
 
+    if (user.blocked) {
+      throw new ConflictException(
+        'Ваш аккаунт заблокирован, обратитесь к администратору',
+      );
+    }
+
     const checkSession = await this.prismaService.refreshToken.findMany({
       where: {
         userId: user.id,
@@ -112,7 +121,7 @@ export class AuthService {
 
     if (checkSession.length) {
       throw new ConflictException(
-        'Ваша сессия активна, что бы выполнить вход заново выйдите из системы',
+        'Ваша сессия активна,  что бы выполнить вход заново выйдите из системы',
       );
     }
 
@@ -122,7 +131,9 @@ export class AuthService {
     return this.tokenService.auth(res, payload, remember);
   }
   async validate(id: string): Promise<JwtPayload> {
-    const userInfo = await this.prismaService.user.findUnique({
+    const userInfo = await this.userService.findUser(id);
+
+    await this.prismaService.user.findUnique({
       where: { id },
 
       select: {

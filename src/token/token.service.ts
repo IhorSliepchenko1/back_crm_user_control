@@ -14,6 +14,7 @@ import { Roles } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { buildResponse } from 'src/utils/build-response';
 import { isDev } from 'src/utils/is-dev.utils';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class TokenService {
@@ -25,6 +26,7 @@ export class TokenService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly prismaService: PrismaService,
+    private readonly userService: UsersService,
   ) {
     this.JWT_REFRESH_TOKEN_TTL_SHORT = configService.getOrThrow<string>(
       'JWT_REFRESH_TOKEN_TTL_SHORT',
@@ -94,13 +96,14 @@ export class TokenService {
     const refreshToken = req.cookies['refreshToken'];
     const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 
-    this.setRefreshTokenCookie(res, '', 0);
     await this.deactivateTokens(payload.id);
-
+    this.setRefreshTokenCookie(res, '', 0);
     return buildResponse('Выполнен выход из системы');
   }
 
   async deactivateTokens(id: string) {
+    await this.userService.findUser(id);
+
     const findLiveTokens = await this.prismaService.refreshToken.findMany({
       where: {
         userId: id,

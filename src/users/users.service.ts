@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -90,7 +91,7 @@ export class UsersService {
       };
     });
     const count_pages = Math.ceil(total / limit);
-    return buildResponse('', {
+    return buildResponse('Список пользователей', {
       data,
       total,
       count_pages,
@@ -157,12 +158,13 @@ export class UsersService {
     const data = {
       id: user.id,
       name: user.login,
-      status: user.blocked,
-      created_at: user.createdAt,
+      is_blocked: user.blocked,
+      created_at: new Date(user.createdAt).toLocaleDateString(),
       creator_projects: user.createdProjects.length,
       participant_projects: user.projects.length,
       ...tasks,
       projects: user.projects,
+      roles: user.roles.map((r) => r.name),
     };
     return buildResponse('Информация о пользователе', { data });
   }
@@ -171,6 +173,13 @@ export class UsersService {
     const user = await this.prismaService.user.findUnique({
       where: {
         id,
+      },
+      select: {
+        id: true,
+        roles: true,
+        password: true,
+        login: true,
+        blocked: true,
       },
     });
 
@@ -198,18 +207,29 @@ export class UsersService {
   async renameUser(dto: RenameUserDto, id: string, req: Request) {
     const { id: userId, roles } = req.user as JwtPayload;
 
+    const user = await this.findUser(id);
+
     if (!roles.includes('ADMIN') && id !== userId) {
       throw new ForbiddenException(
-        'У вас нет прав редактировать чужие логины!',
+        'У вас нет прав редактировать другие аккаунты!',
       );
     }
 
-    const user = await this.findUser(id);
+    const { login } = dto;
+    const isExistLogin = await this.prismaService.user.findUnique({
+      where: { login },
+    });
+
+    if (isExistLogin) {
+      throw new ConflictException(
+        'Логин уже используется другим пользователем',
+      );
+    }
 
     await this.prismaService.user.update({
       where: { id: user.id },
       data: {
-        login: dto.login,
+        login,
       },
     });
 
@@ -217,24 +237,24 @@ export class UsersService {
   }
   async changePassword(dto: ChangePassword, id: string, req: Request) {
     const { id: userId, roles } = req.user as JwtPayload;
+    const user = await this.findUser(id);
 
     if (!roles.includes('ADMIN') && id !== userId) {
       throw new ForbiddenException(
-        'У вас нет прав редактировать чужие логины!',
+        'У вас нет прав редактировать другие аккаунты!',
       );
     }
-    const user = await this.findUser(id);
 
     const { oldPassword, newPassword } = dto;
 
     if (oldPassword === newPassword) {
-      throw new ConflictException('Значения не могут быть одинаковыми');
+      throw new BadRequestException('Значения не могут быть одинаковыми');
     }
 
     const isMatch = await argon2.verify(user.password, oldPassword);
 
     if (!isMatch) {
-      throw new ConflictException('Неверный пароль');
+      throw new ConflictException('Не верный пароль');
     }
 
     const hashNewPassword = await argon2.hash(newPassword);

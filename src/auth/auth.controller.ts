@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Req,
   Res,
@@ -61,7 +62,7 @@ export class AuthController {
   @AuthRoles('ADMIN')
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async registerUser(@Body() dto: RegisterDto) {
+  async register(@Body() dto: RegisterDto) {
     return await this.authService.register(dto);
   }
 
@@ -81,7 +82,10 @@ export class AuthController {
     description: 'Отсутствует логин или пароль',
   })
   @ApiConflictResponse({
-    description: 'Ваша сессия активна, что бы выполнить вход заново выйдите из системы',
+    description: [
+      'Ваша сессия активна, что бы выполнить вход заново выйдите из системы',
+      'Ваш аккаунт заблокирован, обратитесь к администратору',
+    ].join('\n\n'),
   })
   @ApiUnauthorizedResponse({
     description: 'Не верный логин или пароль',
@@ -110,7 +114,7 @@ export class AuthController {
     description: 'Доступ отклонён, войдите в систему и попробуйте снова',
   })
   @Auth()
-  @Post('logout')
+  @Post('logout/me')
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response, @Req() req: Request) {
     return await this.tokenService.logout(res, req);
@@ -137,6 +141,29 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async findOne(@User() user: JwtPayload) {
     return user.roles;
+  }
+
+  @ApiOperation({
+    summary: 'Выход из системы по id другого пользователя',
+    description: 'Принудительный выход из системы',
+  })
+  @ApiOkResponse({
+    description: 'Выполнен выход из системы',
+    schema: {
+      example: { success: true, message: 'Выполнен выход из системы' },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Данный пользователь не имеет активных токенов',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Доступ отклонён, войдите в систему и попробуйте снова',
+  })
+  @AuthRoles('ADMIN')
+  @Post('logout/:id')
+  @HttpCode(HttpStatus.OK)
+  async deactivateTokens(@Param('id') id: string) {
+    return await this.tokenService.deactivateTokens(id);
   }
 
   @ApiOperation({

@@ -6,6 +6,7 @@ import { TokenModule } from 'src/token/token.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { getJwtConfig } from 'src/common/config/jwt.config';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { getJwtConfig } from 'src/common/config/jwt.config';
       useFactory: getJwtConfig,
     }),
     TokenModule,
+    UsersModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
