@@ -8,7 +8,7 @@ export class RegisterDto {
   })
   @IsString({ message: 'Логин - это строка' })
   @IsNotEmpty({ message: 'Обязательное поле' })
-  @Length(5, 20, { message: 'Длина от 5 до 20 символов' })
+  @Length(5, 20, { message: 'Длина логина от 5 до 20 символов' })
   login: string;
 
   @ApiProperty({
@@ -17,7 +17,7 @@ export class RegisterDto {
   })
   @IsString({ message: 'Пароль - это строка' })
   @IsNotEmpty({ message: 'Обязательное поле' })
-  @Length(5, 20, { message: 'Длина от 5 до 20 символов' })
+  @Length(5, 20, { message: 'Длина пароля от 5 до 20 символов' })
   password: string;
 
   @ApiProperty({
