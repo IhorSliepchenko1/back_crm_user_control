@@ -11,13 +11,14 @@ model User {
   id                String             @id @default(uuid())
   login             String             @unique
   password          String
+  avatarPath        String?            @map("avatar_path")
   chatsId           Chat[]
   createdProjects   Project[]
   projects          Project[]          @relation("participants_projects")
   refreshTokens     RefreshToken[]
   roles             Role[]             @relation("role_connections")
   executors         Task[]             @relation("executors")
-  blocked           Boolean            @default(false)
+  active            Boolean            @default(true)
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
   notifications     Notification[]     @relation("recipients_notification")

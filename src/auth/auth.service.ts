@@ -92,7 +92,7 @@ export class AuthService {
         id: true,
         password: true,
         roles: true,
-        blocked: true,
+        active: true,
       },
     });
 
@@ -106,7 +106,7 @@ export class AuthService {
       throw new UnauthorizedException('Не верный логин или пароль');
     }
 
-    if (user.blocked) {
+    if (!user.active) {
       throw new ConflictException(
         'Ваш аккаунт заблокирован, обратитесь к администратору',
       );

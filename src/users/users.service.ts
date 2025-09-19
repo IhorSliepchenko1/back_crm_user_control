@@ -14,13 +14,17 @@ import * as argon2 from 'argon2';
 import type { Request } from 'express';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { PaginationDto } from './dto/pagination.dto';
+import { UploadsService } from 'src/uploads/uploads.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly uploadsService: UploadsService,
+  ) {}
 
   async users(dto: PaginationDto) {
-    const { page, limit } = dto;
+    const { page, limit, active } = dto;
 
     const currentPage = page ?? 1;
     const pageSize = limit ?? 10;
@@ -30,12 +34,12 @@ export class UsersService {
         skip: (currentPage - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
-
+        where: { active },
         select: {
           id: true,
           login: true,
           createdAt: true,
-          blocked: true,
+          active: true,
           projects: {
             select: {
               tasks: true,
@@ -50,7 +54,7 @@ export class UsersService {
         },
       }),
 
-      this.prismaService.user.count(),
+      this.prismaService.user.count({ where: { active } }),
     ]);
 
     const data = userData.map((user) => {
@@ -69,6 +73,9 @@ export class UsersService {
             if (item.status === 'IN_PROGRESS') {
               acc.in_progress_tasks++;
             }
+            if (item.status === 'CANCELED') {
+              acc.canceled_task++;
+            }
           });
 
           return acc;
@@ -78,16 +85,18 @@ export class UsersService {
           done_tasks: 0,
           in_reviews_tasks: 0,
           in_progress_tasks: 0,
+          canceled_task: 0,
         },
       );
       return {
         id: user.id,
         name: user.login,
-        status: user.blocked,
+        is_active: user.active,
         created_at: user.createdAt,
         creator_projects: user.createdProjects.length,
         participant_projects: user.projects.length,
         ...tasks,
+        roles: user.roles.map((r) => r.name),
       };
     });
     const count_pages = Math.ceil(total / limit);
@@ -99,7 +108,6 @@ export class UsersService {
       limit,
     });
   }
-
   async user(id: string) {
     const user = await this.prismaService.user.findUnique({
       where: { id },
@@ -107,7 +115,7 @@ export class UsersService {
         id: true,
         login: true,
         createdAt: true,
-        blocked: true,
+        active: true,
         projects: {
           select: {
             id: true,
@@ -116,6 +124,7 @@ export class UsersService {
             tasks: true,
           },
         },
+
         createdProjects: true,
         roles: {
           select: {
@@ -144,6 +153,10 @@ export class UsersService {
           if (item.status === 'IN_PROGRESS') {
             acc.in_progress_tasks++;
           }
+
+          if (item.status === 'CANCELED') {
+            acc.canceled_task++;
+          }
         });
 
         return acc;
@@ -153,22 +166,21 @@ export class UsersService {
         done_tasks: 0,
         in_reviews_tasks: 0,
         in_progress_tasks: 0,
+        canceled_task: 0,
       },
     );
     const data = {
       id: user.id,
       name: user.login,
-      is_blocked: user.blocked,
+      is_active: user.active,
       created_at: new Date(user.createdAt).toLocaleDateString(),
       creator_projects: user.createdProjects.length,
       participant_projects: user.projects.length,
       ...tasks,
-      projects: user.projects,
       roles: user.roles.map((r) => r.name),
     };
     return buildResponse('Информация о пользователе', { data });
   }
-
   async findUser(id: string) {
     const user = await this.prismaService.user.findUnique({
       where: {
@@ -179,7 +191,7 @@ export class UsersService {
         roles: true,
         password: true,
         login: true,
-        blocked: true,
+        active: true,
       },
     });
 
@@ -196,12 +208,12 @@ export class UsersService {
       where: { id: user.id },
 
       data: {
-        blocked: !user.blocked,
+        active: !user.active,
       },
     });
 
     return buildResponse(
-      `Пользователь '${user.login}' ${!user.blocked ? 'заблокирован' : 'разблокирован'}`,
+      `Пользователь '${user.login}' ${!user.active ? 'заблокирован' : 'разблокирован'}`,
     );
   }
   async renameUser(dto: RenameUserDto, id: string, req: Request) {
@@ -269,5 +281,23 @@ export class UsersService {
     });
 
     return buildResponse('Вы успешно сменили пароль');
+  }
+  async changeAvatar(req: Request, files: Array<Express.Multer.File>) {
+    const { id } = req.user as JwtPayload;
+    await this.findUser(id);
+
+    if (files.length) {
+      const avatarPath = this.uploadsService.seveFiles(files);
+      await this.prismaService.user.update({
+        where: { id },
+
+        data: {
+          avatarPath: avatarPath[0],
+        },
+      });
+    } else {
+      throw new BadRequestException('Некоректные данные');
+    }
+    return buildResponse('Вы успешно сменили аватар аккаунта');
   }
 }

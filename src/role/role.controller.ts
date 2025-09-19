@@ -6,6 +6,7 @@ import {
   Param,
   HttpCode,
   HttpStatus,
+  Get,
 } from '@nestjs/common';
 import { RoleService } from './role.service';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -98,10 +99,17 @@ export class RoleController {
     description: 'Пользователь не найден',
   })
   @ApiConflictResponse({
-    description: 'Удалить роль можно при наличии более 1й роли',
+    description: [
+      'Удалить роль можно при наличии более 1й роли',
+      'Пользователю присвоено максимальный статус ролей',
+    ].join('\n\n'),
   })
   @ApiBadRequestResponse({
-    description: 'Вы передали некорректный массив ролей',
+    description: [
+      'Вы передали некорректный массив ролей',
+      'Удалить роли USER у ADMIN невозможно, это делается в обратном направлении',
+      'Вы не можете одновременно удалять и добавлять права доступа к пользователю',
+    ].join('\n\n'),
   })
   @ApiUnauthorizedResponse({
     description: 'Доступ отклонён, войдите в систему и попробуйте снова',
@@ -114,5 +122,31 @@ export class RoleController {
   @HttpCode(HttpStatus.OK)
   async roleChange(@Param('id') id: string, @Body() dto: RoleChangeDto) {
     return await this.roleService.roleChange(dto, id);
+  }
+
+  @ApiOperation({
+    summary: 'Список ролей',
+  })
+  @ApiOkResponse({
+    description: 'Список ролей',
+    schema: {
+      example: {
+        success: true,
+        message: 'Список ролей',
+        roles: [{ name: 'USER' }, { name: 'ADMIN' }],
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Доступ отклонён, войдите в систему и попробуйте снова',
+  })
+  @ApiForbiddenResponse({
+    description: 'У вас недостаточно прав доступа',
+  })
+  @AuthRoles('ADMIN')
+  @Get('all')
+  @HttpCode(HttpStatus.OK)
+  async rolesAll() {
+    return await this.roleService.rolesAll();
   }
 }

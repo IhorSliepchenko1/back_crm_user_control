@@ -55,7 +55,6 @@ export class ProjectsService {
 
     return buildResponse('Новый проект добавлен');
   }
-
   private async findProject(id: string) {
     const project = await this.prismaService.project.findUnique({
       where: {
@@ -69,30 +68,6 @@ export class ProjectsService {
 
     return project;
   }
-
-  async renameProject(dto: RenameProjectDto, id: string, req: Request) {
-    const { id: creatorId } = req.user as JwtPayload;
-    await this.userService.findUser(creatorId);
-
-    const project = await this.findProject(id);
-
-    if (creatorId !== project.creatorId) {
-      throw new ForbiddenException(
-        'Право менять название проекта есть только у создателя проекта',
-      );
-    }
-
-    const { name } = dto;
-    await this.prismaService.project.update({
-      where: { id },
-      data: {
-        name,
-      },
-    });
-
-    return buildResponse('Проект переименован');
-  }
-
   async participantsProject(dto: Participants, id: string, req: Request) {
     const { id: creatorId } = req.user as JwtPayload;
     await this.userService.findUser(creatorId);
@@ -159,7 +134,28 @@ export class ProjectsService {
 
     return buildResponse('Участники проекта обновлены');
   }
+  async renameProject(dto: RenameProjectDto, id: string, req: Request) {
+    const { id: creatorId } = req.user as JwtPayload;
+    await this.userService.findUser(creatorId);
 
+    const project = await this.findProject(id);
+
+    if (creatorId !== project.creatorId) {
+      throw new ForbiddenException(
+        'Право менять название проекта есть только у создателя проекта',
+      );
+    }
+
+    const { name } = dto;
+    await this.prismaService.project.update({
+      where: { id },
+      data: {
+        name,
+      },
+    });
+
+    return buildResponse('Проект переименован');
+  }
   async isActive(id: string, req: Request) {
     const { id: creatorId } = req.user as JwtPayload;
     await this.userService.findUser(creatorId);
@@ -183,7 +179,6 @@ export class ProjectsService {
 
     return buildResponse('Статус проекта обновлён');
   }
-
   async projects(dto: PaginationDto) {
     const { page, limit, active } = dto;
     const currentPage = page ?? 1;
@@ -251,7 +246,7 @@ export class ProjectsService {
         creator: item.creator.login,
         created_ad: item.createdAt,
         count_participants: item.participants.length,
-        is_active: active
+        is_active: active,
       };
     });
 

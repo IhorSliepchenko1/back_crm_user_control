@@ -5,10 +5,12 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseBoolPipe,
   ParseIntPipe,
   Patch,
   Query,
   Req,
+  UploadedFiles,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthRoles } from 'src/auth/decorators/auth-roles.decorator';
@@ -19,13 +21,13 @@ import type { Request } from 'express';
 import {
   ApiBadRequestResponse,
   ApiConflictResponse,
-  ApiCookieAuth,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { UseUploadFiles } from 'src/uploads/decorators/upload-file.decorator';
 
 @Controller('users')
 export class UsersController {
@@ -45,7 +47,7 @@ export class UsersController {
           {
             id: '8d41efaa-7ba5-40b8-bcd3-5fa451a6dd89',
             name: 'USER_1-1-1',
-            status: false,
+            is_active: false,
             created_at: '2025-09-17T12:10:41.498Z',
             creator_projects: 0,
             participant_projects: 0,
@@ -53,11 +55,13 @@ export class UsersController {
             done_tasks: 0,
             in_reviews_tasks: 0,
             in_progress_tasks: 0,
+            canceled_task: 0,
+            roles: ['USER'],
           },
           {
             id: '6087b04b-92a5-465a-bc17-4a64f856db96',
             name: 'user_login_1',
-            status: false,
+            is_active: false,
             created_at: '2025-09-16T22:29:56.921Z',
             creator_projects: 0,
             participant_projects: 0,
@@ -65,6 +69,8 @@ export class UsersController {
             done_tasks: 0,
             in_reviews_tasks: 0,
             in_progress_tasks: 0,
+            canceled_task: 0,
+            roles: ['USER'],
           },
         ],
         total: 57,
@@ -77,17 +83,15 @@ export class UsersController {
   @ApiUnauthorizedResponse({
     description: 'Доступ отклонён, войдите в систему и попробуйте снова',
   })
-  @ApiForbiddenResponse({
-    description: 'У вас недостаточно прав доступа',
-  })
-  @AuthRoles('ADMIN')
+  @Auth()
   @Get('')
   @HttpCode(HttpStatus.OK)
   async users(
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
+    @Query('active', ParseBoolPipe) active: boolean,
   ) {
-    return await this.usersService.users({ page, limit });
+    return await this.usersService.users({ page, limit, active });
   }
 
   @ApiOperation({
@@ -103,7 +107,7 @@ export class UsersController {
         data: {
           id: '2fe237c4-a74e-42c6-a928-8cd518a0b773',
           name: 'ADMINISTRATOR_1-1',
-          is_blocked: false,
+          is_active: false,
           created_at: '17.09.2025',
           creator_projects: 0,
           participant_projects: 0,
@@ -111,37 +115,7 @@ export class UsersController {
           done_tasks: 0,
           in_reviews_tasks: 0,
           in_progress_tasks: 0,
-          projects: [
-            {
-              id: 'b9e62b34-6437-4e7f-abb7-bdcf92513b5e',
-              active: false,
-              name: 'Колл-Центр-12',
-              tasks: [
-                {
-                  id: '79126de7-5994-4b43-b0fa-b380f90595a4',
-                  name: 'тЕСТОВАЯ ЗАДdfdfddfdfgfdffАЧА',
-                  status: 'IN_REVIEW',
-                  deadline: '2025-09-16T00:00:00.000Z',
-                  taskDescription: 'Описание для задачи',
-                  projectId: 'b9e62b34-6437-4e7f-abb7-bdcf92513b5e',
-                  executorDescription: null,
-                  createdAt: '2025-09-15T23:15:19.963Z',
-                  updatedAt: '2025-09-15T23:37:51.414Z',
-                },
-                {
-                  id: '33a1fde8-68d1-4092-b9d6-1bed2731bec1',
-                  name: 'Test_test_1222dffdfdfd2ddd',
-                  status: 'DONE',
-                  deadline: '2025-12-12T23:59:00.011Z',
-                  taskDescription: 'Описанаие_14fdffddf222dffdfdf2',
-                  projectId: 'b9e62b34-6437-4e7f-abb7-bdcf92513b5e',
-                  executorDescription: null,
-                  createdAt: '2025-09-14T10:39:48.481Z',
-                  updatedAt: '2025-09-14T13:08:05.450Z',
-                },
-              ],
-            },
-          ],
+          canceled_task: 0,
           roles: ['USER', 'ADMIN'],
         },
       },
@@ -150,11 +124,7 @@ export class UsersController {
   @ApiUnauthorizedResponse({
     description: 'Доступ отклонён, войдите в систему и попробуйте снова',
   })
-  @ApiForbiddenResponse({
-    description: 'У вас недостаточно прав доступа',
-  })
-  @ApiNotFoundResponse({ description: 'Пользователь не найден' })
-  @AuthRoles('ADMIN')
+  @Auth()
   @Get('user/:id')
   @HttpCode(HttpStatus.OK)
   async user(@Param('id') id: string) {
@@ -256,5 +226,16 @@ export class UsersController {
     @Req() req: Request,
   ) {
     return await this.usersService.changePassword(dto, id, req);
+  }
+
+  @Auth()
+  @Patch('change-avatar')
+  @HttpCode(HttpStatus.OK)
+  @UseUploadFiles(1, 1, ['image/jpeg', 'image/png', 'image/webp'])
+  async changeAvatar(
+    @Req() req: Request,
+    @UploadedFiles() files: Array<Express.Multer.File>,
+  ) {
+    return await this.usersService.changeAvatar(req, files);
   }
 }

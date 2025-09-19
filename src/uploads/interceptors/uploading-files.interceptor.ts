@@ -5,14 +5,15 @@ import {
   CallHandler,
   mixin,
   Type,
+  BadRequestException,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 
 export function UploadFilesInterceptor(
-  // fieldName: string = 'files',
   sizeMax: number,
   countFiles: number = 1,
+  mimetypes?: Array<string>,
 ): Type<NestInterceptor> {
   @Injectable()
   class MixinInterceptor implements NestInterceptor {
@@ -26,6 +27,16 @@ export function UploadFilesInterceptor(
             cb(null, `${uniqueSuffix}_${file.originalname}`);
           },
         }),
+
+        fileFilter: (req, file, cb) => {
+          if (mimetypes?.length) {
+            if (!mimetypes.includes(file.mimetype)) {
+              cb(new BadRequestException('Неподдерживаемый формат'), false);
+            } else {
+              cb(null, true);
+            }
+          }
+        },
 
         limits: { fileSize: sizeMax * 1024 * 1024 },
       });

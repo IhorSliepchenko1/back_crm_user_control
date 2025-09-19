@@ -81,7 +81,6 @@ export class TaskService {
 
     return buildResponse('Новая задача добавлена');
   }
-
   private async saveFiles(
     filePathTask: Array<string>,
     taskId: string,
@@ -231,7 +230,6 @@ export class TaskService {
 
     return task;
   }
-
   private async taskChangeExecutors(
     arrayId: Array<string>,
     taskId: string,
@@ -254,7 +252,6 @@ export class TaskService {
 
     return false;
   }
-
   async updateTaskExecutor(
     dto: UpdateTaskExecutorDto,
     taskId: string,
@@ -324,7 +321,6 @@ export class TaskService {
 
     return buildResponse('Задача обновлена');
   }
-
   async sendReviewTask(
     dto: SendNotificationMessageDto,
     taskId: string,
@@ -398,7 +394,6 @@ export class TaskService {
 
     return buildResponse('Задача выслана на проверку');
   }
-
   async taskVerification(
     dto: SendNotificationMessageDto,
     taskId: string,

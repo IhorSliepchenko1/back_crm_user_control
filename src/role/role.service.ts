@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Roles } from '@prisma/client';
+import { Role, Roles } from '@prisma/client';
 import { ApiResponse } from 'src/common/interfaces';
 import { buildResponse } from 'src/utils/build-response';
 
@@ -71,16 +71,19 @@ export class RoleService {
     id: string,
     status: 'add' | 'delete',
   ) {
-    const roles = (
+    const rolesData = (
       await this.prismaService.role.findMany({
-        where: { name: { in: names } },
+        select: {
+          name: true,
+        },
       })
     ).map((r) => r.name);
+
+    const roles = rolesData.filter((name) => names.includes(name));
 
     if (roles.length !== names.length) {
       throw new BadRequestException('Вы передали некорректный массив ролей');
     }
-
     if (status === 'delete') {
       await this.prismaService.user.update({
         where: { id },
@@ -123,6 +126,12 @@ export class RoleService {
 
     const { deleteRoles, addRoles } = dto;
 
+    if (deleteRoles?.length && addRoles?.length) {
+      throw new BadRequestException(
+        'Вы не можете одновременно удалять и добавлять права доступа к пользователю',
+      );
+    }
+
     if (deleteRoles?.length) {
       if (user.roles.length === 1) {
         throw new ConflictException(
@@ -130,13 +139,41 @@ export class RoleService {
         );
       }
 
+      if (
+        user.roles.some((r) => r.name === 'ADMIN') &&
+        deleteRoles.length === 1 &&
+        deleteRoles.includes('USER')
+      ) {
+        throw new BadRequestException(
+          'Удалить роли USER у ADMIN невозможно, это делается в обратном направлении',
+        );
+      }
+
       await this.validateRolesExist(deleteRoles, id, 'delete');
     }
 
     if (addRoles?.length) {
-      await this.validateRolesExist(addRoles, id, 'add');
+      if (
+        user.roles.length === 1 &&
+        user.roles.some((r) => r.name === 'USER')
+      ) {
+        await this.validateRolesExist(addRoles, id, 'add');
+      } else {
+        throw new ConflictException(
+          'Пользователю присвоено максимальный статус ролей',
+        );
+      }
     }
-
     return buildResponse('Роли изменены');
+  }
+
+  async rolesAll() {
+    const data = await this.prismaService.role.findMany({
+      select: {
+        name: true,
+      },
+    });
+
+    return buildResponse('Список ролей', { data });
   }
 }
