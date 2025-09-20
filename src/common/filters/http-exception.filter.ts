@@ -31,7 +31,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
           }
 
         case 403:
-          if (messageResp === 'Forbidden') {
+          if (messageResp === 'Forbidden resource') {
             message = 'У вас недостаточно прав доступа';
             break;
           }

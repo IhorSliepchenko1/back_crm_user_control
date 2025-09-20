@@ -18,47 +18,16 @@ import { TokenService } from 'src/token/token.service';
 import type { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { Auth } from './decorators/auth.decorator';
 import { AuthRoles } from './decorators/auth-roles.decorator';
-import {
-  ApiBadRequestResponse,
-  ApiConflictResponse,
-  ApiCookieAuth,
-  ApiForbiddenResponse,
-  ApiNotFoundResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
+import { UsersService } from 'src/users/users.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly tokenService: TokenService,
+    private readonly userService: UsersService,
   ) {}
 
-  @ApiOperation({
-    summary: 'Создание аккаунта',
-    description:
-      'Создание нового аккаунта (доступ к созданию только у роли - ADMIN)',
-  })
-  @ApiOkResponse({
-    description: 'Новый пользователь добавлен',
-    schema: {
-      example: { success: true, message: 'Новый пользователь добавлен' },
-    },
-  })
-  @ApiBadRequestResponse({
-    description: 'Отсутствует логин или пароль',
-  })
-  @ApiConflictResponse({
-    description: 'Пользователь уже зарегистирован',
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Доступ отклонён, войдите в систему и попробуйте снова',
-  })
-  @ApiForbiddenResponse({
-    description: 'У вас недостаточно прав доступа',
-  })
   @AuthRoles('ADMIN')
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
@@ -66,30 +35,6 @@ export class AuthController {
     return await this.authService.register(dto);
   }
 
-  @ApiCookieAuth()
-  @ApiOperation({
-    description:
-      'Вход в систему, запись токена в cookies +добавление токена в БД',
-    summary: 'Вход в систему',
-  })
-  @ApiOkResponse({
-    description: 'Токен обновлён',
-    schema: {
-      example: { success: true, message: 'Токен обновлён' },
-    },
-  })
-  @ApiBadRequestResponse({
-    description: 'Отсутствует логин или пароль',
-  })
-  @ApiConflictResponse({
-    description: [
-      'Ваша сессия активна, что бы выполнить вход заново выйдите из системы',
-      'Ваш аккаунт заблокирован, обратитесь к администратору',
-    ].join('\n\n'),
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Не верный логин или пароль',
-  })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -99,20 +44,6 @@ export class AuthController {
     return await this.authService.login(res, dto);
   }
 
-  @ApiOperation({
-    summary: 'Выход из системы',
-    description:
-      'Удаление токена или cookies и деактивация токена записанного в БД',
-  })
-  @ApiOkResponse({
-    description: 'Выполнен выход из системы',
-    schema: {
-      example: { success: true, message: 'Выполнен выход из системы' },
-    },
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Доступ отклонён, войдите в систему и попробуйте снова',
-  })
   @Auth()
   @Post('logout/me')
   @HttpCode(HttpStatus.OK)
@@ -120,45 +51,14 @@ export class AuthController {
     return await this.tokenService.logout(res, req);
   }
 
-  @ApiOperation({
-    summary: 'Данные о текущем пользователе',
-    description: 'Получение данных пользователя для проверки авторизации',
-  })
-  @ApiOkResponse({
-    description: 'Массив ролей',
-    schema: {
-      example: ['USER'],
-    },
-  })
-  @ApiConflictResponse({
-    description: 'Сервер не смог распознать данные для верификации',
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Доступ отклонён, войдите в систему и попробуйте снова',
-  })
   @Auth()
   @Get('me')
   @HttpCode(HttpStatus.OK)
   async findOne(@User() user: JwtPayload) {
-    return user.roles;
+    const { roles, avatarPath, login } = user;
+    return { roles, avatarPath, name: login };
   }
 
-  @ApiOperation({
-    summary: 'Выход из системы по id другого пользователя',
-    description: 'Принудительный выход из системы',
-  })
-  @ApiOkResponse({
-    description: 'Выполнен выход из системы',
-    schema: {
-      example: { success: true, message: 'Выполнен выход из системы' },
-    },
-  })
-  @ApiNotFoundResponse({
-    description: 'Данный пользователь не имеет активных токенов',
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Доступ отклонён, войдите в систему и попробуйте снова',
-  })
   @AuthRoles('ADMIN')
   @Post('logout/:id')
   @HttpCode(HttpStatus.OK)
@@ -166,25 +66,6 @@ export class AuthController {
     return await this.tokenService.deactivateTokens(id);
   }
 
-  @ApiOperation({
-    summary: 'Обновление токена',
-    description: 'Вызов принудительного обновления токена',
-  })
-  @ApiOkResponse({
-    description: 'Токен обновлён',
-    schema: {
-      example: { success: true, message: 'Токен обновлён' },
-    },
-  })
-  @ApiConflictResponse({
-    description: 'Токен не активен',
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Доступ отклонён, войдите в систему и попробуйте снова',
-  })
-  @ApiNotFoundResponse({
-    description: 'Пользователь не найден',
-  })
   @Auth()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)

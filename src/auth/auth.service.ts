@@ -93,6 +93,8 @@ export class AuthService {
         password: true,
         roles: true,
         active: true,
+        avatarPath: true,
+        login: true,
       },
     });
 

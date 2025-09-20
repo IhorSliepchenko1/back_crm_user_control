@@ -27,5 +27,5 @@ export class RegisterDto {
   })
   @IsOptional()
   @IsString({ message: 'Админ код - это строка' })
-  adminCode: string;
+  adminCode?: string;
 }

@@ -43,7 +43,7 @@ export class TokenService {
     payload: JwtPayload,
     remember: boolean = false,
   ): Promise<ApiResponse> {
-    const { id, roles } = payload;
+    const { id, roles, avatarPath, login } = payload;
 
     await this.deactivateTokens(id);
 
@@ -51,7 +51,13 @@ export class TokenService {
       ? this.JWT_REFRESH_TOKEN_TTL_SHORT
       : this.JWT_REFRESH_TOKEN_TTL_LONG;
 
-    const { refreshToken } = this.generateTokens(id, roles, ttl);
+    const { refreshToken } = this.generateTokens(
+      id,
+      roles,
+      avatarPath,
+      login,
+      ttl,
+    );
 
     this.setRefreshTokenCookie(res, refreshToken, ttl);
 
@@ -73,8 +79,14 @@ export class TokenService {
     });
   }
 
-  private generateTokens(id: string, roles: Roles[], ttl: string) {
-    const payload: JwtPayload = { id, roles };
+  private generateTokens(
+    id: string,
+    roles: Roles[],
+    avatarPath: string | null,
+    login: string,
+    ttl: string,
+  ) {
+    const payload: JwtPayload = { id, roles, avatarPath, login };
     const refreshToken = this.signToken(payload, ttl);
 
     return { refreshToken };

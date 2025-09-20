@@ -23,8 +23,9 @@ export class UsersService {
     private readonly uploadsService: UploadsService,
   ) {}
 
-  async users(dto: PaginationDto) {
+  async users(dto: PaginationDto, req: Request) {
     const { page, limit, active } = dto;
+    const { id, roles } = req.user as JwtPayload;
 
     const currentPage = page ?? 1;
     const pageSize = limit ?? 10;
@@ -34,10 +35,11 @@ export class UsersService {
         skip: (currentPage - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
-        where: { active },
+        where: { active: roles.includes('ADMIN') ? active : true },
         select: {
           id: true,
           login: true,
+          avatarPath: true,
           createdAt: true,
           active: true,
           projects: {
@@ -54,10 +56,12 @@ export class UsersService {
         },
       }),
 
-      this.prismaService.user.count({ where: { active } }),
+      this.prismaService.user.count({
+        where: { active: roles.includes('ADMIN') ? active : true },
+      }),
     ]);
 
-    const data = userData.map((user) => {
+    const users = userData.map((user) => {
       const tasks = user.projects.reduce(
         (acc, val) => {
           val.tasks.map((item) => {
@@ -91,8 +95,9 @@ export class UsersService {
       return {
         id: user.id,
         name: user.login,
+        avatarPath: user.avatarPath,
         is_active: user.active,
-        created_at: user.createdAt,
+        created_at: new Date(user.createdAt).toLocaleDateString(),
         creator_projects: user.createdProjects.length,
         participant_projects: user.projects.length,
         ...tasks,
@@ -100,13 +105,15 @@ export class UsersService {
       };
     });
     const count_pages = Math.ceil(total / limit);
-    return buildResponse('Список пользователей', {
-      data,
+
+    const data = {
+      users,
       total,
       count_pages,
       page,
       limit,
-    });
+    };
+    return buildResponse('Список пользователей', { data });
   }
   async user(id: string) {
     const user = await this.prismaService.user.findUnique({
@@ -115,6 +122,7 @@ export class UsersService {
         id: true,
         login: true,
         createdAt: true,
+        avatarPath: true,
         active: true,
         projects: {
           select: {
@@ -176,6 +184,7 @@ export class UsersService {
       created_at: new Date(user.createdAt).toLocaleDateString(),
       creator_projects: user.createdProjects.length,
       participant_projects: user.projects.length,
+      avatarPath: user.avatarPath,
       ...tasks,
       roles: user.roles.map((r) => r.name),
     };
@@ -192,6 +201,7 @@ export class UsersService {
         password: true,
         login: true,
         active: true,
+        avatarPath: true,
       },
     });
 
