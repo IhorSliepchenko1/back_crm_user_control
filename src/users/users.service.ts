@@ -7,14 +7,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { buildResponse } from 'src/utils/build-response';
-
-import { RenameUserDto } from './dto/rename-user.dto';
-import { ChangePassword } from './dto/change-password.dto';
 import * as argon2 from 'argon2';
 import type { Request } from 'express';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { PaginationDto } from './dto/pagination.dto';
 import { UploadsService } from 'src/uploads/uploads.service';
+import { UpdateUserByIdDto } from './dto/update-user-by-id.dto';
 
 @Injectable()
 export class UsersService {
@@ -25,7 +23,7 @@ export class UsersService {
 
   async users(dto: PaginationDto, req: Request) {
     const { page, limit, active } = dto;
-    const { id, roles } = req.user as JwtPayload;
+    const { roles } = req.user as JwtPayload;
 
     const currentPage = page ?? 1;
     const pageSize = limit ?? 10;
@@ -115,9 +113,18 @@ export class UsersService {
     };
     return buildResponse('Список пользователей', { data });
   }
-  async user(id: string) {
+
+  async user(id: string, req: Request) {
+    let userId: string | null = id;
+
+    if (id === 'my-profile') {
+      const { id: myId } = req.user as JwtPayload;
+      await this.findUser(myId);
+      userId = myId;
+    }
+
     const user = await this.prismaService.user.findUnique({
-      where: { id },
+      where: { id: userId },
       select: {
         id: true,
         login: true,
@@ -177,17 +184,31 @@ export class UsersService {
         canceled_task: 0,
       },
     );
-    const data = {
-      id: user.id,
-      name: user.login,
-      is_active: user.active,
-      created_at: new Date(user.createdAt).toLocaleDateString(),
-      creator_projects: user.createdProjects.length,
-      participant_projects: user.projects.length,
-      avatarPath: user.avatarPath,
-      ...tasks,
-      roles: user.roles.map((r) => r.name),
-    };
+
+    const data = [
+      { title: 'id', value: user.id },
+      { title: 'имя', value: user.login },
+      {
+        title: 'роль',
+        value: user.roles.map((r) => r.name).includes('ADMIN')
+          ? 'ADMIN'
+          : 'USER',
+      },
+      { title: 'статус', value: user.active ? 'active' : 'blocked' },
+      {
+        title: 'создан',
+        value: new Date(user.createdAt).toLocaleDateString(),
+      },
+      { title: 'личные проекты', value: user.createdProjects.length },
+      { title: 'участник проектов', value: user.projects.length },
+      { title: 'avatarPath', value: user.avatarPath },
+      { title: 'к-во задач', value: tasks.count_tasks },
+      { title: 'выполненные задачи', value: tasks.done_tasks },
+      { title: 'задачи на проверке', value: tasks.in_reviews_tasks },
+      { title: 'задачи в работе', value: tasks.in_progress_tasks },
+      { title: 'отменённые задачи', value: tasks.canceled_task },
+    ];
+
     return buildResponse('Информация о пользователе', { data });
   }
   async findUser(id: string) {
@@ -211,7 +232,14 @@ export class UsersService {
 
     return user;
   }
-  async isActive(id: string) {
+  async isActive(id: string, req: Request) {
+    const { id: myId } = req.user as JwtPayload;
+    if (myId === id) {
+      throw new ConflictException(
+        'Пользователь не может заблокировать самого себя',
+      );
+    }
+
     const user = await this.findUser(id);
 
     await this.prismaService.user.update({
@@ -223,91 +251,168 @@ export class UsersService {
     });
 
     return buildResponse(
-      `Пользователь '${user.login}' ${!user.active ? 'заблокирован' : 'разблокирован'}`,
+      `Пользователь '${user.login}' ${user.active ? 'заблокирован' : 'разблокирован'}`,
     );
   }
-  async renameUser(dto: RenameUserDto, id: string, req: Request) {
-    const { id: userId, roles } = req.user as JwtPayload;
+  // async renameUser(dto: RenameUserDto, id: string, req: Request) {
+  //   const { id: userId, roles } = req.user as JwtPayload;
 
-    const user = await this.findUser(id);
+  //   const user = await this.findUser(id);
 
-    if (!roles.includes('ADMIN') && id !== userId) {
+  //   if (!roles.includes('ADMIN') && id !== userId) {
+  //     throw new ForbiddenException(
+  //       'У вас нет прав редактировать другие аккаунты!',
+  //     );
+  //   }
+
+  //   const { login } = dto;
+  //   const isExistLogin = await this.prismaService.user.findUnique({
+  //     where: { login },
+  //   });
+
+  //   if (isExistLogin) {
+  //     throw new ConflictException(
+  //       'Логин уже используется другим пользователем',
+  //     );
+  //   }
+
+  //   await this.prismaService.user.update({
+  //     where: { id: user.id },
+  //     data: {
+  //       login,
+  //     },
+  //   });
+
+  //   return buildResponse('Пользователь переименован');
+  // }
+  // async changePassword(dto: ChangePassword, id: string, req: Request) {
+  //   const { id: userId, roles } = req.user as JwtPayload;
+  //   const user = await this.findUser(id);
+
+  //   if (!roles.includes('ADMIN') && id !== userId) {
+  //     throw new ForbiddenException(
+  //       'У вас нет прав редактировать другие аккаунты!',
+  //     );
+  //   }
+
+  //   const { oldPassword, newPassword } = dto;
+
+  //   if (oldPassword === newPassword) {
+  //     throw new BadRequestException('Значения не могут быть одинаковыми');
+  //   }
+
+  //   const isMatch = await argon2.verify(user.password, oldPassword);
+
+  //   if (!isMatch) {
+  //     throw new ConflictException('Не верный пароль');
+  //   }
+
+  //   const hashNewPassword = await argon2.hash(newPassword);
+
+  //   await this.prismaService.user.update({
+  //     where: {
+  //       id: user.id,
+  //     },
+  //     data: {
+  //       password: hashNewPassword,
+  //     },
+  //   });
+
+  //   return buildResponse('Вы успешно сменили пароль');
+  // }
+  // async changeAvatar(req: Request, files: Array<Express.Multer.File>) {
+  //   const { id } = req.user as JwtPayload;
+  //   await this.findUser(id);
+
+  //   if (files.length) {
+  //     const avatarPath = this.uploadsService.seveFiles(files);
+  //     await this.prismaService.user.update({
+  //       where: { id },
+
+  //       data: {
+  //         avatarPath: avatarPath[0],
+  //       },
+  //     });
+  //   } else {
+  //     throw new BadRequestException('Некоректные данные');
+  //   }
+  //   return buildResponse('Вы успешно сменили аватар аккаунта');
+  // }
+
+  async updateUserById(
+    dto: UpdateUserByIdDto,
+    id: string,
+    req: Request,
+    files?: Array<Express.Multer.File>,
+  ) {
+    const { id: myId, roles } = req.user as JwtPayload;
+
+    let userId: string | null = id;
+
+    if (id === 'my-profile') {
+      const { id: myId } = req.user as JwtPayload;
+      userId = myId;
+    }
+
+    const user = await this.findUser(userId);
+
+    if (!roles.includes('ADMIN') && userId !== myId) {
       throw new ForbiddenException(
         'У вас нет прав редактировать другие аккаунты!',
       );
     }
 
-    const { login } = dto;
-    const isExistLogin = await this.prismaService.user.findUnique({
-      where: { login },
-    });
+    const { login, newPassword, oldPassword } = dto;
+    const data: { login?: string; password?: string; avatarPath?: string } = {};
 
-    if (isExistLogin) {
-      throw new ConflictException(
-        'Логин уже используется другим пользователем',
+    if (login) {
+      const isExistLogin = await this.prismaService.user.findUnique({
+        where: { login },
+      });
+      if (isExistLogin) {
+        throw new ConflictException(
+          'Логин уже используется другим пользователем',
+        );
+      }
+
+      data.login = login;
+    }
+
+    if ((newPassword && !oldPassword) || (oldPassword && !newPassword)) {
+      throw new BadRequestException(
+        'Вы передали не все данные для смены пароля',
       );
     }
+
+    if (newPassword && oldPassword) {
+      if (oldPassword === newPassword) {
+        throw new ConflictException('Значения не могут быть одинаковыми');
+      }
+
+      const isMatch = await argon2.verify(user.password, oldPassword);
+
+      if (!isMatch) {
+        throw new ConflictException('Не верный пароль');
+      }
+
+      const hashNewPassword = await argon2.hash(newPassword);
+
+      data.password = hashNewPassword;
+    }
+
+    if (files) {
+      if (files.length) {
+        const avatarPath = this.uploadsService.seveFiles(files)[0];
+        data.avatarPath = avatarPath;
+      }
+    }
+    console.log(data);
 
     await this.prismaService.user.update({
       where: { id: user.id },
-      data: {
-        login,
-      },
+      data,
     });
 
-    return buildResponse('Пользователь переименован');
-  }
-  async changePassword(dto: ChangePassword, id: string, req: Request) {
-    const { id: userId, roles } = req.user as JwtPayload;
-    const user = await this.findUser(id);
-
-    if (!roles.includes('ADMIN') && id !== userId) {
-      throw new ForbiddenException(
-        'У вас нет прав редактировать другие аккаунты!',
-      );
-    }
-
-    const { oldPassword, newPassword } = dto;
-
-    if (oldPassword === newPassword) {
-      throw new BadRequestException('Значения не могут быть одинаковыми');
-    }
-
-    const isMatch = await argon2.verify(user.password, oldPassword);
-
-    if (!isMatch) {
-      throw new ConflictException('Не верный пароль');
-    }
-
-    const hashNewPassword = await argon2.hash(newPassword);
-
-    await this.prismaService.user.update({
-      where: {
-        id: user.id,
-      },
-      data: {
-        password: hashNewPassword,
-      },
-    });
-
-    return buildResponse('Вы успешно сменили пароль');
-  }
-  async changeAvatar(req: Request, files: Array<Express.Multer.File>) {
-    const { id } = req.user as JwtPayload;
-    await this.findUser(id);
-
-    if (files.length) {
-      const avatarPath = this.uploadsService.seveFiles(files);
-      await this.prismaService.user.update({
-        where: { id },
-
-        data: {
-          avatarPath: avatarPath[0],
-        },
-      });
-    } else {
-      throw new BadRequestException('Некоректные данные');
-    }
-    return buildResponse('Вы успешно сменили аватар аккаунта');
+    return buildResponse('Вы успешно сохранили новые данные');
   }
 }

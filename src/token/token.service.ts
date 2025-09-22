@@ -69,7 +69,7 @@ export class TokenService {
       },
     });
 
-    return buildResponse('Токен обновлён');
+    return buildResponse('Вы вошли в систему');
   }
 
   private signToken(payload: JwtPayload, ttl: string) {

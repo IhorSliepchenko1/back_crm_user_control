@@ -8,6 +8,7 @@ import {
   ParseBoolPipe,
   ParseIntPipe,
   Patch,
+  Put,
   Query,
   Req,
   UploadedFiles,
@@ -15,11 +16,10 @@ import {
 import { UsersService } from './users.service';
 import { AuthRoles } from 'src/auth/decorators/auth-roles.decorator';
 import { Auth } from 'src/auth/decorators/auth.decorator';
-import { RenameUserDto } from './dto/rename-user.dto';
-import { ChangePassword } from './dto/change-password.dto';
 import type { Request } from 'express';
 
 import { UseUploadFiles } from 'src/uploads/decorators/upload-file.decorator';
+import { UpdateUserByIdDto } from './dto/update-user-by-id.dto';
 
 @Controller('users')
 export class UsersController {
@@ -40,47 +40,60 @@ export class UsersController {
   @Auth()
   @Get('user/:id')
   @HttpCode(HttpStatus.OK)
-  async user(@Param('id') id: string) {
-    return await this.usersService.user(id);
+  async user(@Param('id') id: string, @Req() req: Request) {
+    return await this.usersService.user(id, req);
   }
 
   @AuthRoles('ADMIN')
   @Patch('is-active/:id')
   @HttpCode(HttpStatus.OK)
-  async isActive(@Param('id') id: string) {
-    return await this.usersService.isActive(id);
+  async isActive(@Param('id') id: string, @Req() req: Request) {
+    return await this.usersService.isActive(id, req);
   }
 
-  @Auth()
-  @Patch('rename/:id')
-  @HttpCode(HttpStatus.OK)
-  async renameUser(
-    @Param('id') id: string,
-    @Body() dto: RenameUserDto,
-    @Req() req: Request,
-  ) {
-    return await this.usersService.renameUser(dto, id, req);
-  }
+  // @AuthRoles('ADMIN')
+  // @Patch('rename/:id')
+  // @HttpCode(HttpStatus.OK)
+  // async renameUser(
+  //   @Param('id') id: string,
+  //   @Body() dto: RenameUserDto,
+  //   @Req() req: Request,
+  // ) {
+  //   return await this.usersService.renameUser(dto, id, req);
+  // }
+
+  // @AuthRoles('ADMIN')
+  // @Patch('change-password/:id')
+  // @HttpCode(HttpStatus.OK)
+  // async changePassword(
+  //   @Param('id') id: string,
+  //   @Body() dto: ChangePassword,
+  //   @Req() req: Request,
+  // ) {
+  //   return await this.usersService.changePassword(dto, id, req);
+  // }
+
+  // @Auth()
+  // @Patch('change-avatar')
+  // @HttpCode(HttpStatus.OK)
+  // @UseUploadFiles(1, 1, ['image/jpeg', 'image/png', 'image/webp'])
+  // async changeAvatar(
+  //   @Req() req: Request,
+  //   @UploadedFiles() files: Array<Express.Multer.File>,
+  // ) {
+  //   return await this.usersService.changeAvatar(req, files);
+  // }
 
   @Auth()
-  @Patch('change-password/:id')
-  @HttpCode(HttpStatus.OK)
-  async changePassword(
-    @Param('id') id: string,
-    @Body() dto: ChangePassword,
-    @Req() req: Request,
-  ) {
-    return await this.usersService.changePassword(dto, id, req);
-  }
-
-  @Auth()
-  @Patch('change-avatar')
+  @Put('update-user/:id')
   @HttpCode(HttpStatus.OK)
   @UseUploadFiles(1, 1, ['image/jpeg', 'image/png', 'image/webp'])
-  async changeAvatar(
+  async updateUserById(
+    @Body() dto: UpdateUserByIdDto,
+    @Param('id') id: string,
     @Req() req: Request,
     @UploadedFiles() files: Array<Express.Multer.File>,
   ) {
-    return await this.usersService.changeAvatar(req, files);
+    return await this.usersService.updateUserById(dto, id, req, files);
   }
 }
