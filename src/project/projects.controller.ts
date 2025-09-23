@@ -60,14 +60,19 @@ export class ProjectsController {
     return await this.projectService.isActive(id, req);
   }
 
-  @AuthRoles('ADMIN')
+  @Auth()
   @Get('all')
   @HttpCode(HttpStatus.OK)
   async projects(
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
     @Query('active', ParseBoolPipe) active: boolean,
+    @Req() req: Request,
+    @Query('my', new ParseBoolPipe({ optional: true })) my?: boolean,
   ) {
-    return await this.projectService.projects({ page, limit, active });
+    return await this.projectService.projects(
+      { page, limit, active, my },
+      req,
+    );
   }
 }

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -42,6 +43,12 @@ export class ProjectsService {
       );
     }
 
+    if (isExistParticipants.some((u) => !u.active)) {
+      throw new BadRequestException(
+        'Заблокированные пользователи не могут быть добавлены в проект',
+      );
+    }
+
     await this.prismaService.project.create({
       data: {
         name,
@@ -68,13 +75,19 @@ export class ProjectsService {
     return project;
   }
   async participantsProject(dto: Participants, id: string, req: Request) {
-    const { id: creatorId } = req.user as JwtPayload;
+    const { id: creatorId, roles } = req.user as JwtPayload;
     await this.userService.findUser(creatorId);
     const project = await this.findProject(id);
 
-    if (creatorId !== project.creatorId) {
-      throw new ForbiddenException();
+    if (
+      !roles.some((role) => role === 'ADMIN') &&
+      creatorId !== project.creatorId
+    ) {
+      throw new ForbiddenException(
+        'Вы не можете менять что то в чужих проектах',
+      );
     }
+
     const { ids, key } = dto;
 
     const participants =
@@ -132,13 +145,18 @@ export class ProjectsService {
     return buildResponse('Участники проекта обновлены');
   }
   async renameProject(dto: RenameProjectDto, id: string, req: Request) {
-    const { id: creatorId } = req.user as JwtPayload;
+    const { id: creatorId, roles } = req.user as JwtPayload;
     await this.userService.findUser(creatorId);
 
     const project = await this.findProject(id);
 
-    if (creatorId !== project.creatorId) {
-      throw new ForbiddenException();
+    if (
+      !roles.some((role) => role === 'ADMIN') &&
+      creatorId !== project.creatorId
+    ) {
+      throw new ForbiddenException(
+        'Вы не можете менять что то в чужих проектах',
+      );
     }
 
     const { name } = dto;
@@ -152,12 +170,17 @@ export class ProjectsService {
     return buildResponse('Проект переименован');
   }
   async isActive(id: string, req: Request) {
-    const { id: creatorId } = req.user as JwtPayload;
+    const { id: creatorId, roles } = req.user as JwtPayload;
     await this.userService.findUser(creatorId);
     const project = await this.findProject(id);
 
-    if (creatorId !== project.creatorId) {
-      throw new ForbiddenException();
+    if (
+      !roles.some((role) => role === 'ADMIN') &&
+      creatorId !== project.creatorId
+    ) {
+      throw new ForbiddenException(
+        'Вы не можете менять что то в чужих проектах',
+      );
     }
 
     await this.prismaService.project.update({
@@ -172,17 +195,27 @@ export class ProjectsService {
 
     return buildResponse('Статус проекта обновлён');
   }
-  async projects(dto: PaginationDto) {
-    const { page, limit, active } = dto;
+  async projects(dto: PaginationDto, req: Request) {
+    const { id: creatorId, roles } = req.user as JwtPayload;
+    await this.userService.findUser(creatorId);
+
+    const { page, limit, active, my } = dto;
     const currentPage = page ?? 1;
     const pageSize = limit ?? 10;
+
+    const isAdmin = roles.some((role) => role === 'ADMIN');
+
+    const where = {
+      active,
+      ...((!isAdmin || (my && isAdmin)) && { creatorId }),
+    };
 
     const [prevData, total] = await this.prismaService.$transaction([
       this.prismaService.project.findMany({
         skip: (currentPage - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
-        where: { active },
+        where,
 
         select: {
           id: true,
@@ -204,7 +237,7 @@ export class ProjectsService {
         },
       }),
 
-      this.prismaService.project.count({ where: { active } }),
+      this.prismaService.project.count({ where }),
     ]);
 
     const projects = prevData.map((item) => {
@@ -224,6 +257,10 @@ export class ProjectsService {
             acc.in_progress_tasks++;
           }
 
+          if (val.status === 'CANCELED') {
+            acc.canceled_task++;
+          }
+
           return acc;
         },
         {
@@ -231,6 +268,7 @@ export class ProjectsService {
           done_tasks: 0,
           in_reviews_tasks: 0,
           in_progress_tasks: 0,
+          canceled_task: 0,
         },
       );
 
@@ -239,7 +277,7 @@ export class ProjectsService {
         name: item.name,
         ...tasks,
         creator: item.creator.login,
-        created_ad: new Date(item.createdAt).toLocaleDateString(),
+        created_at: new Date(item.createdAt).toLocaleDateString(),
         count_participants: item.participants.length,
         is_active: active,
       };

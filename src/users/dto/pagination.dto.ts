@@ -12,4 +12,7 @@ export class PaginationDto {
   @IsOptional()
   @IsNumber()
   active?: boolean;
+
+  @IsOptional()
+  my?: boolean;
 }
