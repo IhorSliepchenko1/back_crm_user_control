@@ -136,7 +136,7 @@ export class TaskService {
     }, []);
 
     if (creatorId !== task.project.creatorId) {
-      throw new ForbiddenException('У вас нет прав доступа к данной задачу');
+      throw new ForbiddenException();
     }
 
     if (name && name !== currentName) {
@@ -274,7 +274,7 @@ export class TaskService {
     const isExecutor = recipients.has(executorId);
 
     if (!isExecutor) {
-      throw new ForbiddenException('У вас нет доступа к данной задаче');
+      throw new ForbiddenException();
     }
     const { executorDescription, filesIdRemove } = dto;
 
@@ -361,7 +361,7 @@ export class TaskService {
     const isExecutor = recipients.has(senderId);
 
     if (!isExecutor) {
-      throw new ForbiddenException('У вас нет доступа к данной задаче');
+      throw new ForbiddenException();
     }
 
     if (task.status === 'IN_REVIEW') {
@@ -427,9 +427,7 @@ export class TaskService {
     }
 
     if (creatorId !== task.project.creatorId) {
-      throw new ForbiddenException(
-        'У вас нет прав администрирования к данной задаче',
-      );
+      throw new ForbiddenException();
     }
 
     const recipients = task.executors.map((e) => e.id);

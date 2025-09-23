@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -74,9 +73,7 @@ export class ProjectsService {
     const project = await this.findProject(id);
 
     if (creatorId !== project.creatorId) {
-      throw new ForbiddenException(
-        'Право менять участников проекта есть только у создателя проекта',
-      );
+      throw new ForbiddenException();
     }
     const { ids, key } = dto;
 
@@ -141,9 +138,7 @@ export class ProjectsService {
     const project = await this.findProject(id);
 
     if (creatorId !== project.creatorId) {
-      throw new ForbiddenException(
-        'Право менять название проекта есть только у создателя проекта',
-      );
+      throw new ForbiddenException();
     }
 
     const { name } = dto;
@@ -162,9 +157,7 @@ export class ProjectsService {
     const project = await this.findProject(id);
 
     if (creatorId !== project.creatorId) {
-      throw new ForbiddenException(
-        'Право менять статус проекта есть только у создателя проекта',
-      );
+      throw new ForbiddenException();
     }
 
     await this.prismaService.project.update({
@@ -192,6 +185,7 @@ export class ProjectsService {
         where: { active },
 
         select: {
+          id: true,
           name: true,
           createdAt: true,
           creator: {
@@ -213,7 +207,7 @@ export class ProjectsService {
       this.prismaService.project.count({ where: { active } }),
     ]);
 
-    const data = prevData.map((item) => {
+    const projects = prevData.map((item) => {
       const tasks = item.tasks.reduce(
         (acc, val) => {
           acc.count_tasks++;
@@ -241,22 +235,25 @@ export class ProjectsService {
       );
 
       return {
+        id: item.id,
         name: item.name,
         ...tasks,
         creator: item.creator.login,
-        created_ad: item.createdAt,
+        created_ad: new Date(item.createdAt).toLocaleDateString(),
         count_participants: item.participants.length,
         is_active: active,
       };
     });
-
     const count_pages = Math.ceil(total / limit);
-    return buildResponse('Данные получены', {
-      data,
+
+    const data = {
+      projects,
       total,
       count_pages,
       page,
       limit,
-    });
+    };
+
+    return buildResponse('Список проектов', { data });
   }
 }

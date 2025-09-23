@@ -6,7 +6,6 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { MulterExceptionFilter } from './uploads/filters/multer-exeption.filter';
 import { setupSwagger } from './utils/swagger.utils';
 
 async function bootstrap() {
@@ -26,11 +25,10 @@ async function bootstrap() {
 
   app.useStaticAssets(uploads);
   app.useGlobalPipes(new ValidationPipe());
-  app.useGlobalFilters(new MulterExceptionFilter());
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const PORT = process.env.PORT ?? 3000;
-  
+
   setupSwagger(app);
   await app.listen(PORT);
 }

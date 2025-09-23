@@ -1,9 +1,7 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import type { Request } from 'express';
@@ -146,9 +144,7 @@ export class NotificationService {
       );
 
     if (notification && notification.recipientId !== id) {
-      throw new ForbiddenException(
-        'Отказано в доступе, скорее всего вы ошибочно пытаетесь отредактировать чужое уведомление',
-      );
+      throw new ForbiddenException();
     }
 
     await this.prismaService.notificationRead.update({

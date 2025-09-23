@@ -6,6 +6,7 @@ import {
   mixin,
   Type,
   BadRequestException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -28,7 +29,9 @@ export function UploadFilesInterceptor(
           },
         }),
 
-        fileFilter: (req, file, cb) => {
+        limits: { fileSize: sizeMax * 1024 * 1024 },
+
+        fileFilter: (_req, file, cb) => {
           if (mimetypes?.length) {
             if (!mimetypes.includes(file.mimetype)) {
               cb(new BadRequestException('Неподдерживаемый формат'), false);
@@ -37,15 +40,22 @@ export function UploadFilesInterceptor(
             }
           }
         },
-
-        limits: { fileSize: sizeMax * 1024 * 1024 },
       });
 
       this.interceptor = new InterceptorClass();
     }
 
-    intercept(context: ExecutionContext, next: CallHandler<any>) {
-      return this.interceptor.intercept(context, next);
+    async intercept(context: ExecutionContext, next: CallHandler<any>) {
+      try {
+        return await this.interceptor.intercept(context, next);
+      } catch (error: any) {
+        if (error instanceof PayloadTooLargeException) {
+          throw new BadRequestException(
+            `Размер файла превышает допустимый (${sizeMax}MB)`,
+          );
+        }
+        throw new BadRequestException('Ошибка имфорта файла(ов)');
+      }
     }
   }
 

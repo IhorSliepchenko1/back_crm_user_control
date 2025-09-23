@@ -96,4 +96,11 @@ export class UsersController {
   ) {
     return await this.usersService.updateUserById(dto, id, req, files);
   }
+
+  @Auth()
+  @Get('for-project')
+  @HttpCode(HttpStatus.OK)
+  async usersForProject() {
+    return await this.usersService.usersForProject();
+  }
 }

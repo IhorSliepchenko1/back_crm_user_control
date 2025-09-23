@@ -3,6 +3,7 @@ import {
   Catch,
   ArgumentsHost,
   HttpException,
+  // PayloadTooLargeException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
@@ -13,35 +14,37 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const res = ctx.getResponse<Response>();
     const req = ctx.getRequest<Request>();
     const status = exception.getStatus();
-
     const exceptionResponse = exception.getResponse();
 
     let message: string = 'Произошла ошибка';
+
     if (typeof exceptionResponse === 'string') {
       message = exceptionResponse;
     } else {
-      const statusCode = (exceptionResponse as any).statusCode;
-      const messageResp = (exceptionResponse as any).message;
+      const statusCode = (exceptionResponse as any).statusCode as number;
+      const messageResp = (exceptionResponse as any).message as string;
 
       switch (statusCode) {
         case 401:
-          if (messageResp === 'Unauthorized') {
+          if (messageResp.toLowerCase().includes('unauthorized')) {
             message = 'Доступ отклонён, войдите в систему и попробуйте снова';
             break;
           }
-
         case 403:
-          if (messageResp === 'Forbidden resource') {
+          if (messageResp.toLowerCase().includes('forbidden')) {
             message = 'У вас недостаточно прав доступа';
             break;
           }
-
         default:
+          // if (exception instanceof PayloadTooLargeException) {
+          //   message = 'Слишком большой файл';
+          // } else {
+          // }
           message = messageResp;
+
           break;
       }
     }
-
     res.status(status).json({
       success: false,
       message,
