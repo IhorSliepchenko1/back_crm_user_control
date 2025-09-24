@@ -226,7 +226,7 @@ export class ProjectsService {
               login: true,
             },
           },
-
+          creatorId: true,
           participants: true,
 
           tasks: {
@@ -274,6 +274,7 @@ export class ProjectsService {
 
       return {
         id: item.id,
+        creatorId: item.creatorId,
         name: item.name,
         ...tasks,
         creator: item.creator.login,
@@ -293,5 +294,51 @@ export class ProjectsService {
     };
 
     return buildResponse('Список проектов', { data });
+  }
+  async project(id: string, req: Request) {
+    const { id: creatorId, roles } = req.user as JwtPayload;
+    await this.userService.findUser(creatorId);
+    const project = await this.prismaService.project.findUnique({
+      where: { id },
+      select: {
+        name: true,
+        creator: {
+          select: {
+            login: true,
+            id: true,
+          },
+        },
+
+        participants: {
+          select: {
+            id: true,
+            login: true,
+          },
+        },
+        tasks: {
+          select: {
+            id: true,
+            deadline: true,
+            name: true,
+            status: true,
+            executors: {
+              select: {
+                login: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (
+      project &&
+      !roles.some((role) => role === 'ADMIN') &&
+      creatorId !== project.creator.id
+    ) {
+      throw new ForbiddenException('Вам не доступен просмотр чужих проетов');
+    }
+
+    return buildResponse('Проект', { data: { project } });
   }
 }

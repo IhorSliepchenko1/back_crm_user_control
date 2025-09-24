@@ -51,39 +51,6 @@ export class UsersController {
     return await this.usersService.isActive(id, req);
   }
 
-  // @AuthRoles('ADMIN')
-  // @Patch('rename/:id')
-  // @HttpCode(HttpStatus.OK)
-  // async renameUser(
-  //   @Param('id') id: string,
-  //   @Body() dto: RenameUserDto,
-  //   @Req() req: Request,
-  // ) {
-  //   return await this.usersService.renameUser(dto, id, req);
-  // }
-
-  // @AuthRoles('ADMIN')
-  // @Patch('change-password/:id')
-  // @HttpCode(HttpStatus.OK)
-  // async changePassword(
-  //   @Param('id') id: string,
-  //   @Body() dto: ChangePassword,
-  //   @Req() req: Request,
-  // ) {
-  //   return await this.usersService.changePassword(dto, id, req);
-  // }
-
-  // @Auth()
-  // @Patch('change-avatar')
-  // @HttpCode(HttpStatus.OK)
-  // @UseUploadFiles(1, 1, ['image/jpeg', 'image/png', 'image/webp'])
-  // async changeAvatar(
-  //   @Req() req: Request,
-  //   @UploadedFiles() files: Array<Express.Multer.File>,
-  // ) {
-  //   return await this.usersService.changeAvatar(req, files);
-  // }
-
   @Auth()
   @Put('update-user/:id')
   @HttpCode(HttpStatus.OK)

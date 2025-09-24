@@ -13,7 +13,6 @@ import {
   Req,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
-import { AuthRoles } from 'src/auth/decorators/auth-roles.decorator';
 import { ProjectDto } from './dto/project.dto';
 import type { Request } from 'express';
 import { Participants } from './dto/participants.dto';
@@ -70,9 +69,13 @@ export class ProjectsController {
     @Req() req: Request,
     @Query('my', new ParseBoolPipe({ optional: true })) my?: boolean,
   ) {
-    return await this.projectService.projects(
-      { page, limit, active, my },
-      req,
-    );
+    return await this.projectService.projects({ page, limit, active, my }, req);
+  }
+
+  @Auth()
+  @Get('project/:id')
+  @HttpCode(HttpStatus.OK)
+  async project(@Param('id') id: string, @Req() req: Request) {
+    return await this.projectService.project(id, req);
   }
 }
