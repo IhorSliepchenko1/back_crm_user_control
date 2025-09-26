@@ -66,6 +66,19 @@ export class ProjectsService {
       where: {
         id,
       },
+
+      select: {
+        id: true,
+        name: true,
+        creatorId: true,
+        active: true,
+
+        participants: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
 
     if (!project) {
@@ -89,6 +102,24 @@ export class ProjectsService {
     }
 
     const { ids, key } = dto;
+
+    if (ids.includes(creatorId)) {
+      throw new ConflictException(
+        `Создатель проекта не может быть ${key === 'connect' ? 'добавлен' : 'удалён'}`,
+      );
+    }
+
+    if (key === 'connect' && project.participants.length + ids.length > 15) {
+      throw new ConflictException(
+        'При добавлении новых участников к-во привысит максимально допустимое (15)!',
+      );
+    }
+
+    if (ids.length >= 15) {
+      throw new ConflictException(
+        `Вы передали слишком много пользователей для ${key === 'connect' ? 'добавления' : 'удаления'}`,
+      );
+    }
 
     const participants =
       key === 'connect'

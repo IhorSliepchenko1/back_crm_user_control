@@ -254,10 +254,15 @@ export class UsersService {
     );
   }
 
-  async usersForProject() {
+  async usersForProject(req: Request) {
+    const { id } = req.user as JwtPayload;
+
     const data = await this.prismaService.user.findMany({
       where: {
         active: true,
+        id: {
+          not: id,
+        },
       },
 
       select: {

@@ -67,7 +67,7 @@ export class UsersController {
   @Auth()
   @Get('for-project')
   @HttpCode(HttpStatus.OK)
-  async usersForProject() {
-    return await this.usersService.usersForProject();
+  async usersForProject(@Req() req: Request) {
+    return await this.usersService.usersForProject(req);
   }
 }
