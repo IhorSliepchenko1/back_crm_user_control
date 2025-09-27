@@ -13,20 +13,15 @@ import type { Request } from 'express';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { RenameProjectDto } from './dto/rename-project.dto';
 import { PaginationDto } from 'src/users/dto/pagination.dto';
-import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class ProjectsService {
   constructor(
     private readonly prismaService: PrismaService,
-    private readonly userService: UsersService,
   ) {}
 
   async createProject(dto: ProjectDto, req: Request) {
     const { id: creatorId } = req.user as JwtPayload;
-
-    await this.userService.findUser(creatorId);
-
     const { name, participants } = dto;
 
     const isExistParticipants = await this.prismaService.user.findMany({
@@ -89,7 +84,6 @@ export class ProjectsService {
   }
   async participantsProject(dto: Participants, id: string, req: Request) {
     const { id: creatorId, roles } = req.user as JwtPayload;
-    await this.userService.findUser(creatorId);
     const project = await this.findProject(id);
 
     if (
@@ -177,8 +171,6 @@ export class ProjectsService {
   }
   async renameProject(dto: RenameProjectDto, id: string, req: Request) {
     const { id: creatorId, roles } = req.user as JwtPayload;
-    await this.userService.findUser(creatorId);
-
     const project = await this.findProject(id);
 
     if (
@@ -202,7 +194,6 @@ export class ProjectsService {
   }
   async isActive(id: string, req: Request) {
     const { id: creatorId, roles } = req.user as JwtPayload;
-    await this.userService.findUser(creatorId);
     const project = await this.findProject(id);
 
     if (
@@ -228,8 +219,6 @@ export class ProjectsService {
   }
   async projects(dto: PaginationDto, req: Request) {
     const { id: creatorId, roles } = req.user as JwtPayload;
-    await this.userService.findUser(creatorId);
-
     const { page, limit, active, my } = dto;
     const currentPage = page ?? 1;
     const pageSize = limit ?? 10;
@@ -328,7 +317,6 @@ export class ProjectsService {
   }
   async project(id: string, req: Request) {
     const { id: creatorId, roles } = req.user as JwtPayload;
-    await this.userService.findUser(creatorId);
     const project = await this.prismaService.project.findUnique({
       where: { id },
       select: {

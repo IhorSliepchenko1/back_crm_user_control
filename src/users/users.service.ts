@@ -118,7 +118,6 @@ export class UsersService {
 
     if (id === 'my-profile') {
       const { id: myId } = req.user as JwtPayload;
-      await this.findUser(myId);
       userId = myId;
     }
 
