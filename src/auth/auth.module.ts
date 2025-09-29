@@ -7,7 +7,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { getJwtConfig } from 'src/common/config/jwt.config';
 import { UsersModule } from 'src/users/users.module';
-import { UploadsModule } from 'src/uploads/uploads.module';
 
 @Module({
   imports: [

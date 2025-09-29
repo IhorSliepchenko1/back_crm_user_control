@@ -1,14 +1,8 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Response, Request } from 'express';
 import parse from 'parse-duration';
-import { ApiResponse } from 'src/common/interfaces';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { Roles } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -38,11 +32,7 @@ export class TokenService {
     this.JWT_SECRET = configService.getOrThrow<string>('JWT_SECRET');
   }
 
-  async auth(
-    res: Response,
-    payload: JwtPayload,
-    remember: boolean = false,
-  ): Promise<ApiResponse> {
+  async auth(res: Response, payload: JwtPayload, remember: boolean = false) {
     const { id, roles, avatarPath, login } = payload;
 
     await this.deactivateTokens(id);
@@ -71,14 +61,12 @@ export class TokenService {
 
     return buildResponse('Вы вошли в систему');
   }
-
   private signToken(payload: JwtPayload, ttl: string) {
     return this.jwtService.sign(payload, {
       expiresIn: ttl,
       secret: this.JWT_SECRET,
     });
   }
-
   private generateTokens(
     id: string,
     roles: Roles[],
@@ -91,7 +79,6 @@ export class TokenService {
 
     return { refreshToken };
   }
-
   private setRefreshTokenCookie(res: Response, value: string, ttl: string | 0) {
     const maxAge = typeof ttl === 'string' ? (parse(ttl) as number) : 0;
 
@@ -103,8 +90,7 @@ export class TokenService {
       maxAge,
     });
   }
-
-  async logout(res: Response, req: Request): Promise<ApiResponse> {
+  async logout(res: Response, req: Request) {
     const refreshToken = req.cookies['refreshToken'];
     const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 
@@ -113,12 +99,22 @@ export class TokenService {
     return buildResponse('Выполнен выход из системы');
   }
 
-  async deactivateTokens(id: string) {
-    await this.userService.findUser(id);
+  async logoutById(id: string) {
+    const currentTokens = await this.findAliveTokens(id);
+    if (!currentTokens.length) {
+      throw new NotFoundException(
+        'Данный пользователь не имеет активных сессий',
+      );
+    }
 
-    const findLiveTokens = await this.prismaService.refreshToken.findMany({
+    await this.deactivateTokens(id);
+    return buildResponse('Выполнен выход из системы');
+  }
+
+  private async findAliveTokens(userId: string) {
+    const tokens = await this.prismaService.refreshToken.findMany({
       where: {
-        userId: id,
+        userId,
         revoked: false,
       },
 
@@ -127,9 +123,15 @@ export class TokenService {
       },
     });
 
+    return tokens;
+  }
+
+  async deactivateTokens(id: string) {
+    const findLiveTokens = await this.findAliveTokens(id);
+
     if (!findLiveTokens) {
       throw new NotFoundException(
-        'Данный пользователь не имеет активных токенов',
+        'Данный пользователь не имеет активных сессий',
       );
     }
 

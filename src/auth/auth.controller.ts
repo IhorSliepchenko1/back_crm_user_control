@@ -18,14 +18,12 @@ import { TokenService } from 'src/token/token.service';
 import type { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { Auth } from './decorators/auth.decorator';
 import { AuthRoles } from './decorators/auth-roles.decorator';
-import { UsersService } from 'src/users/users.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly tokenService: TokenService,
-    private readonly userService: UsersService,
   ) {}
 
   @AuthRoles('ADMIN')
@@ -62,8 +60,8 @@ export class AuthController {
   @AuthRoles('ADMIN')
   @Post('logout/:id')
   @HttpCode(HttpStatus.OK)
-  async deactivateTokens(@Param('id') id: string) {
-    return await this.tokenService.deactivateTokens(id);
+  async logoutById(@Param('id') id: string) {
+    return await this.tokenService.logoutById(id);
   }
 
   @Auth()

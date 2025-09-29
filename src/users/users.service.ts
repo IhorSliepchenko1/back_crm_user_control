@@ -252,7 +252,6 @@ export class UsersService {
       `Пользователь '${user.login}' ${user.active ? 'заблокирован' : 'разблокирован'}`,
     );
   }
-
   async usersForProject(req: Request) {
     const { id } = req.user as JwtPayload;
 
@@ -272,7 +271,6 @@ export class UsersService {
 
     return buildResponse('Список пользователей', { data });
   }
-
   async updateUserById(
     dto: UpdateUserByIdDto,
     id: string,

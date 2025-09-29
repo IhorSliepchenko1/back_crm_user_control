@@ -29,7 +29,7 @@ export class AuthService {
     private readonly userService: UsersService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<ApiResponse> {
+  async register(dto: RegisterDto) {
     const { login, password, adminCode } = dto;
 
     if (!login || !password) {
@@ -76,7 +76,7 @@ export class AuthService {
 
     return buildResponse('Новый пользователь добавлен');
   }
-  async login(res: Response, dto: LoginDto): Promise<ApiResponse> {
+  async login(res: Response, dto: LoginDto) {
     const { login, password, remember } = dto;
 
     if (!login || !password) {
@@ -162,7 +162,7 @@ export class AuthService {
 
     return user;
   }
-  async refresh(req: Request, res: Response): Promise<ApiResponse> {
+  async refresh(req: Request, res: Response) {
     const refreshToken = req.cookies['refreshToken'];
     const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 

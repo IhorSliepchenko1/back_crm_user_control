@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Put,
@@ -19,6 +21,7 @@ import { Auth } from 'src/auth/decorators/auth.decorator';
 import { SendNotificationMessageDto } from '../notification/dto/send-notification-message.dto';
 import { UpdateTaskCreatorDto } from './dto/update-task-creator.dto';
 import { UpdateTaskExecutorDto } from './dto/update-task-executor.dto';
+import { TaskStatus } from '@prisma/client';
 
 @Controller('task')
 export class TaskController {
@@ -82,5 +85,21 @@ export class TaskController {
     @Req() req: Request,
   ) {
     return this.taskService.taskVerification(dto, id, req);
+  }
+
+  @Auth()
+  @Get('task-by-project')
+  @HttpCode(HttpStatus.OK)
+  taskByProjectId(
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('status') status: TaskStatus,
+    @Query('deadlineFrom') deadlineFrom: string,
+    @Query('deadlineTo') deadlineTo: string,
+    @Query('projectId') projectId: string,
+    @Req() req: Request,
+  ) {
+    const dto = { page, limit, status, deadlineFrom, deadlineTo, projectId };
+    return this.taskService.taskByProjectId(dto, req);
   }
 }

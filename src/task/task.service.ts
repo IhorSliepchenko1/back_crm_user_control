@@ -17,12 +17,15 @@ import { UpdateTaskCreatorDto } from './dto/update-task-creator.dto';
 import { UpdateTaskExecutorDto } from './dto/update-task-executor.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UsersService } from 'src/users/users.service';
+import { ProjectsService } from 'src/project/projects.service';
+import { PaginationTaskDto } from './dto/pagination-task.dto';
 
 @Injectable()
 export class TaskService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly uploadsService: UploadsService,
+    private readonly projectsService: ProjectsService,
     private eventEmitter: EventEmitter2,
     private readonly userService: UsersService,
   ) {}
@@ -450,5 +453,73 @@ export class TaskService {
     });
 
     return buildResponse('Ответ по проверке задачи отравлен');
+  }
+  async taskByProjectId(dto: PaginationTaskDto, req: Request) {
+    const { page, limit, status, deadlineFrom, deadlineTo, projectId } = dto;
+    const { id: creatorId, roles } = req.user as JwtPayload;
+    const currentPage = page ?? 1;
+    const pageSize = limit ?? 10;
+
+    const isAdmin = roles.some((role) => role === 'ADMIN');
+
+    const isCreator = await this.prismaService.project.findUnique({
+      where: {
+        id: projectId,
+      },
+    });
+
+    if (!isAdmin && isCreator?.creatorId !== creatorId) {
+      throw new ForbiddenException(
+        'Отказано в доступе. Вы можете просматривать эти задачи!',
+      );
+    }
+
+    const where = {
+      projectId,
+      ...(status && { status }),
+      ...(deadlineTo &&
+        deadlineFrom && {
+          deadline: {
+            gte: deadlineFrom,
+            lte: deadlineTo,
+          },
+        }),
+    };
+
+    const [tasks, total] = await this.prismaService.$transaction([
+      this.prismaService.task.findMany({
+        skip: (currentPage - 1) * pageSize,
+        take: pageSize,
+        orderBy: { status: 'asc' },
+        where,
+        select: {
+          name: true,
+          status: true,
+          deadline: true,
+          executors: {
+            select: {
+              login: true,
+            },
+          },
+          createdAt: true,
+        },
+      }),
+
+      this.prismaService.task.count({
+        where,
+      }),
+    ]);
+
+    const count_pages = Math.ceil(total / limit);
+
+    const data = {
+      tasks,
+      total,
+      count_pages,
+      page,
+      limit,
+    };
+
+    return buildResponse('Список задач', { data });
   }
 }

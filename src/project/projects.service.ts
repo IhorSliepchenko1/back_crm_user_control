@@ -16,9 +16,7 @@ import { PaginationDto } from 'src/users/dto/pagination.dto';
 
 @Injectable()
 export class ProjectsService {
-  constructor(
-    private readonly prismaService: PrismaService,
-  ) {}
+  constructor(private readonly prismaService: PrismaService) {}
 
   async createProject(dto: ProjectDto, req: Request) {
     const { id: creatorId } = req.user as JwtPayload;
@@ -334,19 +332,7 @@ export class ProjectsService {
             login: true,
           },
         },
-        tasks: {
-          select: {
-            id: true,
-            deadline: true,
-            name: true,
-            status: true,
-            executors: {
-              select: {
-                login: true,
-              },
-            },
-          },
-        },
+        tasks: {},
       },
     });
 
@@ -358,6 +344,11 @@ export class ProjectsService {
       throw new ForbiddenException('Вам не доступен просмотр чужих проетов');
     }
 
-    return buildResponse('Проект', { data: { project } });
+    const data = { ...project, count_task: project?.tasks.length };
+    delete data.tasks;
+
+    return buildResponse('Проект', {
+      data: { project: data },
+    });
   }
 }

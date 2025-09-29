@@ -48,7 +48,7 @@ export class RoleService {
   async updateDescriptions(
     dto: UpdateDescriptionsDto,
     id: string,
-  ): Promise<ApiResponse> {
+  ) {
     const role = await this.prismaService.role.findUnique({
       where: { id },
     });
