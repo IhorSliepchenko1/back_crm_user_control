@@ -33,8 +33,11 @@ export class TaskService {
   async createTask(
     dto: CreateTaskDto,
     projectId: string,
+    req: Request,
     files: Array<Express.Multer.File>,
   ) {
+    const { id: creatorId } = req.user as JwtPayload;
+
     const project = await this.prismaService.project.findUnique({
       where: {
         id: projectId,
@@ -42,6 +45,7 @@ export class TaskService {
 
       select: {
         id: true,
+        creatorId: true,
         participants: {
           select: {
             id: true,
@@ -52,6 +56,12 @@ export class TaskService {
 
     if (!project) {
       throw new NotFoundException('Проект не обнаружен');
+    }
+
+    if (project.creatorId !== creatorId) {
+      throw new ForbiddenException(
+        'Только куратор проекта может назначать задачи!',
+      );
     }
 
     const { name, deadline, taskDescription, executors } = dto;

@@ -34,9 +34,10 @@ export class TaskController {
   createTask(
     @Body() dto: CreateTaskDto,
     @Query('projectId') projectId: string,
+    @Req() req: Request,
     @UploadedFiles() files: Array<Express.Multer.File>,
   ) {
-    return this.taskService.createTask(dto, projectId, files);
+    return this.taskService.createTask(dto, projectId, req, files);
   }
 
   @Auth()

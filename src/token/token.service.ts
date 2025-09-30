@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Response, Request } from 'express';
@@ -88,12 +92,16 @@ export class TokenService {
       maxAge,
     });
   }
-  async logout(res: Response, req: Request) {
+  async logout(res: Response, req: Request, redirect?: boolean) {
     const refreshToken = req.cookies['refreshToken'];
     const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
-
     await this.deactivateTokens(payload.id);
     this.setRefreshTokenCookie(res, '', 0);
+
+    if (redirect) {
+      throw new UnauthorizedException('Вы вышли из системы');
+    }
+
     return buildResponse('Выполнен выход из системы');
   }
 
@@ -127,11 +135,13 @@ export class TokenService {
   async deactivateTokens(id: string) {
     const findLiveTokens = await this.findAliveTokens(id);
 
-    if (!findLiveTokens.length) {
+    if (!findLiveTokens) {
       throw new NotFoundException(
         'Данный пользователь не имеет активных сессий',
       );
-    } else {
+    }
+
+    if (findLiveTokens && findLiveTokens.length >= 1) {
       const tokenIds = findLiveTokens.map((t) => t.id);
 
       await this.prismaService.refreshToken.updateMany({
@@ -148,5 +158,23 @@ export class TokenService {
     }
 
     return true;
+  }
+
+  async validateToken(req: Request, res: Response) {
+    const tokenHash = req.cookies['refreshToken'] as string;
+
+    const findToken = await this.prismaService.refreshToken.findUnique({
+      where: {
+        tokenHash,
+      },
+    });
+
+    if (findToken) {
+      const { revoked } = findToken;
+      if (revoked) {
+        this.setRefreshTokenCookie(res, '', 0);
+        throw new UnauthorizedException('Сессия просрочена, войдите снова');
+      }
+    }
   }
 }

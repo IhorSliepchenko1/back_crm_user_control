@@ -6,8 +6,10 @@ import {
   HttpStatus,
   Param,
   Post,
+  Redirect,
   Req,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Response, Request } from 'express';
@@ -52,8 +54,20 @@ export class AuthController {
   @Auth()
   @Get('me')
   @HttpCode(HttpStatus.OK)
-  async findOne(@User() user: JwtPayload) {
+  async findOne(
+    @User() user: JwtPayload,
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
+  ) {
     const { roles, avatarPath, login } = user;
+    const { exp, now } = await this.authService.findSession(user.id);
+
+    await this.tokenService.validateToken(req, res);
+
+    if (exp < now) {
+      return await this.tokenService.logout(res, req, true);
+    }
+
     return { roles, avatarPath, name: login };
   }
 

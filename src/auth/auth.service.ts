@@ -113,20 +113,9 @@ export class AuthService {
       );
     }
 
-    const checkSession = await this.prismaService.refreshToken.findMany({
-      where: {
-        userId: user.id,
-        revoked: false,
-      },
-    });
+    const { exp, now } = await this.findSession(user.id);
 
-    if (checkSession.length) {
-      const { tokenHash } = checkSession[0];
-      const verifyTokenHash: JwtPayload =
-        await this.jwtService.verifyAsync(tokenHash);
-      const exp = verifyTokenHash.exp as number;
-      const now = Math.floor(Date.now() / 1000);
-
+    if (exp > 0 && now > 0) {
       if (exp > now) {
         throw new ConflictException(
           'Ваша сессия активна, что бы выполнить вход заново выйдите из системы',
@@ -139,6 +128,27 @@ export class AuthService {
 
     return this.tokenService.auth(res, payload, remember);
   }
+
+  async findSession(userId: string) {
+    const checkSession = await this.prismaService.refreshToken.findMany({
+      where: {
+        userId,
+        revoked: false,
+      },
+    });
+
+    if (checkSession.length) {
+      const { tokenHash } = checkSession[0];
+      const verifyTokenHash: JwtPayload =
+        await this.jwtService.verifyAsync(tokenHash);
+      const exp = verifyTokenHash.exp as number;
+      const now = Math.floor(Date.now() / 1000);
+
+      return { exp, now };
+    }
+    return { exp: 0, now: 0 };
+  }
+
   async validate(id: string): Promise<JwtPayload> {
     const userInfo = await this.userService.findUser(id);
 

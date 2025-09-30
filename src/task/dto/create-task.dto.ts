@@ -9,7 +9,7 @@ import {
 
 export class CreateTaskDto {
   @IsString({ message: 'Название задачи - это строка' })
-  @Length(5, 100, { message: 'Длина названия задачи 5-100 символов' })
+  @Length(5, 30, { message: 'Длина названия задачи 5-30 символов' })
   name: string;
 
   @IsString({ message: 'deadline - это строка' })
