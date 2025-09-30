@@ -15,7 +15,6 @@ import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { ConfigService } from '@nestjs/config';
 import { Roles } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
-import { ApiResponse } from 'src/common/interfaces';
 import { buildResponse } from 'src/utils/build-response';
 import { UsersService } from 'src/users/users.service';
 
@@ -122,9 +121,17 @@ export class AuthService {
     });
 
     if (checkSession.length) {
-      throw new ConflictException(
-        'Ваша сессия активна,  что бы выполнить вход заново выйдите из системы',
-      );
+      const { tokenHash } = checkSession[0];
+      const verifyTokenHash: JwtPayload =
+        await this.jwtService.verifyAsync(tokenHash);
+      const exp = verifyTokenHash.exp as number;
+      const now = Math.floor(Date.now() / 1000);
+
+      if (exp > now) {
+        throw new ConflictException(
+          'Ваша сессия активна, что бы выполнить вход заново выйдите из системы',
+        );
+      }
     }
 
     const roles = user.roles.map((n) => n.name);
@@ -162,40 +169,40 @@ export class AuthService {
 
     return user;
   }
-  async refresh(req: Request, res: Response) {
-    const refreshToken = req.cookies['refreshToken'];
-    const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
+  // async refresh(req: Request, res: Response) {
+  //   const refreshToken = req.cookies['refreshToken'];
+  //   const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 
-    const isRevoked = await this.prismaService.refreshToken.findUnique({
-      where: {
-        tokenHash: refreshToken,
-      },
-    });
+  //   const isRevoked = await this.prismaService.refreshToken.findUnique({
+  //     where: {
+  //       tokenHash: refreshToken,
+  //     },
+  //   });
 
-    if (!isRevoked || isRevoked.revoked)
-      throw new ConflictException('Токен не активен');
+  //   if (!isRevoked || isRevoked.revoked)
+  //     throw new ConflictException('Токен не активен');
 
-    const userInfo = await this.prismaService.user.findUnique({
-      where: {
-        id: payload.id,
-      },
+  //   const userInfo = await this.prismaService.user.findUnique({
+  //     where: {
+  //       id: payload.id,
+  //     },
 
-      select: {
-        id: true,
-        roles: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
+  //     select: {
+  //       id: true,
+  //       roles: {
+  //         select: {
+  //           name: true,
+  //         },
+  //       },
+  //     },
+  //   });
 
-    if (!userInfo) {
-      throw new NotFoundException('Пользователь не найден');
-    }
-    const user = await this.validate(userInfo.id);
+  //   if (!userInfo) {
+  //     throw new NotFoundException('Пользователь не найден');
+  //   }
+  //   const user = await this.validate(userInfo.id);
 
-    this.tokenService.deactivateTokens(userInfo.id);
-    return this.tokenService.auth(res, user);
-  }
+  //   this.tokenService.deactivateTokens(userInfo.id);
+  //   return this.tokenService.auth(res, user);
+  // }
 }

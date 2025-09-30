@@ -5,4 +5,5 @@ export interface JwtPayload {
   login: string;
   roles: Roles[];
   avatarPath: string | null;
+  exp?: number;
 }

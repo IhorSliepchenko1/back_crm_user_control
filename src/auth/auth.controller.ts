@@ -64,13 +64,13 @@ export class AuthController {
     return await this.tokenService.logoutById(id);
   }
 
-  @Auth()
-  @Post('refresh')
-  @HttpCode(HttpStatus.OK)
-  async refreshTokens(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    return await this.authService.refresh(req, res);
-  }
+  // @Auth()
+  // @Post('refresh')
+  // @HttpCode(HttpStatus.OK)
+  // async refreshTokens(
+  //   @Req() req: Request,
+  //   @Res({ passthrough: true }) res: Response,
+  // ) {
+  //   return await this.authService.refresh(req, res);
+  // }
 }

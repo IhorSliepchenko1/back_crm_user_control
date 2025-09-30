@@ -8,7 +8,6 @@ import { Roles } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { buildResponse } from 'src/utils/build-response';
 import { isDev } from 'src/utils/is-dev.utils';
-import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class TokenService {
@@ -20,7 +19,6 @@ export class TokenService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly prismaService: PrismaService,
-    private readonly userService: UsersService,
   ) {
     this.JWT_REFRESH_TOKEN_TTL_SHORT = configService.getOrThrow<string>(
       'JWT_REFRESH_TOKEN_TTL_SHORT',
@@ -32,14 +30,14 @@ export class TokenService {
     this.JWT_SECRET = configService.getOrThrow<string>('JWT_SECRET');
   }
 
-  async auth(res: Response, payload: JwtPayload, remember: boolean = false) {
+  async auth(res: Response, payload: JwtPayload, remember: boolean) {
     const { id, roles, avatarPath, login } = payload;
 
     await this.deactivateTokens(id);
 
     const ttl = remember
-      ? this.JWT_REFRESH_TOKEN_TTL_SHORT
-      : this.JWT_REFRESH_TOKEN_TTL_LONG;
+      ? this.JWT_REFRESH_TOKEN_TTL_LONG
+      : this.JWT_REFRESH_TOKEN_TTL_SHORT;
 
     const { refreshToken } = this.generateTokens(
       id,
@@ -129,13 +127,11 @@ export class TokenService {
   async deactivateTokens(id: string) {
     const findLiveTokens = await this.findAliveTokens(id);
 
-    if (!findLiveTokens) {
+    if (!findLiveTokens.length) {
       throw new NotFoundException(
         'Данный пользователь не имеет активных сессий',
       );
-    }
-
-    if (findLiveTokens && findLiveTokens.length >= 1) {
+    } else {
       const tokenIds = findLiveTokens.map((t) => t.id);
 
       await this.prismaService.refreshToken.updateMany({
@@ -151,6 +147,6 @@ export class TokenService {
       });
     }
 
-    return buildResponse('Выполнен выход из системы');
+    return true;
   }
 }
