@@ -103,4 +103,11 @@ export class TaskController {
     const dto = { page, limit, status, deadlineFrom, deadlineTo, projectId };
     return this.taskService.taskByProjectId(dto, req);
   }
+
+  @Auth()
+  @Get(':id')
+  @HttpCode(HttpStatus.OK)
+  taskById(@Param('id') id: string, @Req() req: Request) {
+    return this.taskService.taskById(id, req);
+  }
 }

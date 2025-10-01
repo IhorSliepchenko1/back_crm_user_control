@@ -64,6 +64,12 @@ export class TaskService {
 
     const { name, deadline, taskDescription, executors } = dto;
 
+    if (executors.length < 1 || executors.length > 5) {
+      throw new BadRequestException(
+        'К-во участников должно быть в пределах 1-5',
+      );
+    }
+
     const participants = project.participants.map((p) => p.id);
     const isAccess = executors.some((id) => !participants.includes(id));
 
@@ -109,6 +115,62 @@ export class TaskService {
         }),
       ),
     );
+  }
+
+  private async taskData(id: string) {
+    const task = await this.prismaService.task.findUnique({
+      where: { id },
+
+      select: {
+        id: true,
+        executors: {
+          select: {
+            id: true,
+          },
+        },
+
+        taskDescription: true,
+        executorDescription: true,
+        deadline: true,
+        name: true,
+        project: {
+          select: {
+            creatorId: true,
+          },
+        },
+
+        files: {
+          select: {
+            id: true,
+            type: true,
+          },
+        },
+      },
+    });
+
+    return task;
+  }
+  private async taskChangeExecutors(
+    arrayId: string[],
+    taskId: string,
+    key: 'connect' | 'disconnect',
+  ) {
+    if (arrayId.length > 0) {
+      const executors =
+        key === 'connect'
+          ? { connect: arrayId.map((id) => ({ id })) }
+          : { disconnect: arrayId.map((id) => ({ id })) };
+
+      await this.prismaService.task.update({
+        where: { id: taskId },
+        data: {
+          executors,
+        },
+      });
+      return true;
+    }
+
+    return false;
   }
   async updateTaskCreator(
     dto: UpdateTaskCreatorDto,
@@ -208,61 +270,6 @@ export class TaskService {
     });
 
     return buildResponse('Задача обновлена');
-  }
-  private async taskData(id: string) {
-    const task = await this.prismaService.task.findUnique({
-      where: { id },
-
-      select: {
-        id: true,
-        executors: {
-          select: {
-            id: true,
-          },
-        },
-
-        taskDescription: true,
-        executorDescription: true,
-        deadline: true,
-        name: true,
-        project: {
-          select: {
-            creatorId: true,
-          },
-        },
-
-        files: {
-          select: {
-            id: true,
-            type: true,
-          },
-        },
-      },
-    });
-
-    return task;
-  }
-  private async taskChangeExecutors(
-    arrayId: string[],
-    taskId: string,
-    key: 'connect' | 'disconnect',
-  ) {
-    if (arrayId.length > 0) {
-      const executors =
-        key === 'connect'
-          ? { connect: arrayId.map((id) => ({ id })) }
-          : { disconnect: arrayId.map((id) => ({ id })) };
-
-      await this.prismaService.task.update({
-        where: { id: taskId },
-        data: {
-          executors,
-        },
-      });
-      return true;
-    }
-
-    return false;
   }
   async updateTaskExecutor(
     dto: UpdateTaskExecutorDto,
@@ -502,6 +509,7 @@ export class TaskService {
         orderBy: { status: 'asc' },
         where,
         select: {
+          id: true,
           name: true,
           status: true,
           deadline: true,
@@ -530,5 +538,48 @@ export class TaskService {
     };
 
     return buildResponse('Список задач', { data });
+  }
+
+  async taskById(id: string, req: Request) {
+    const { id: creatorId, roles } = req.user as JwtPayload;
+    const task = await this.prismaService.task.findUnique({
+      where: {
+        id,
+      },
+
+      select: {
+        executors: true,
+        deadline: true,
+        status: true,
+        executorDescription: true,
+        taskDescription: true,
+        files: {
+          select: {
+            id: true,
+            fileName: true,
+            type: true,
+          },
+        },
+        project: {
+          select: {
+            creatorId: true,
+          },
+        },
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Задача не обнаружена');
+    }
+
+    if (
+      task.project.creatorId !== creatorId &&
+      !task.executors.some((e) => e.id === creatorId) &&
+      !roles.includes('ADMIN')
+    ) {
+      throw new ForbiddenException('У вас нет права доступа к задаче');
+    }
+
+    return buildResponse('Задача', { data: task });
   }
 }
