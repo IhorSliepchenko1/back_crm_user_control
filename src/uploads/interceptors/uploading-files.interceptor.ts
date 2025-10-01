@@ -14,7 +14,7 @@ import { diskStorage } from 'multer';
 export function UploadFilesInterceptor(
   sizeMax: number,
   countFiles: number = 1,
-  mimetypes?: Array<string>,
+  mimetypes?: string[],
 ): Type<NestInterceptor> {
   @Injectable()
   class MixinInterceptor implements NestInterceptor {
@@ -32,12 +32,12 @@ export function UploadFilesInterceptor(
         limits: { fileSize: sizeMax * 1024 * 1024 },
 
         fileFilter: (_req, file, cb) => {
-          if (mimetypes?.length) {
+          if (mimetypes && mimetypes.length) {
             if (!mimetypes.includes(file.mimetype)) {
               cb(new BadRequestException('Неподдерживаемый формат'), false);
-            } else {
-              cb(null, true);
             }
+          } else {
+            cb(null, true);
           }
         },
       });

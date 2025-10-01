@@ -4,7 +4,7 @@ import { UploadFilesInterceptor } from '../interceptors/uploading-files.intercep
 export const UseUploadFiles = (
   sizeMax: number = 5,
   countFiles: number = 5,
-  mimetypes?: Array<string>,
+  mimetypes?: string[],
 ) =>
   applyDecorators(
     UseInterceptors(UploadFilesInterceptor(sizeMax, countFiles, mimetypes)),

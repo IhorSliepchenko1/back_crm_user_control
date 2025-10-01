@@ -30,12 +30,12 @@ export class TaskController {
   @Auth()
   @Post('create')
   @HttpCode(HttpStatus.CREATED)
-  @UseUploadFiles()
+  @UseUploadFiles(5, 5)
   createTask(
     @Body() dto: CreateTaskDto,
     @Query('projectId') projectId: string,
     @Req() req: Request,
-    @UploadedFiles() files: Array<Express.Multer.File>,
+    @UploadedFiles() files?: Array<Express.Multer.File>,
   ) {
     return this.taskService.createTask(dto, projectId, req, files);
   }

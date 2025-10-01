@@ -24,7 +24,12 @@ async function bootstrap() {
   }
 
   app.useStaticAssets(uploads);
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  );
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const PORT = process.env.PORT ?? 3000;

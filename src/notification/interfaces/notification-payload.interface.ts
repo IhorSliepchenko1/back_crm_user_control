@@ -1,7 +1,7 @@
 export interface NotificationPayload {
   taskId: string;
   senderId: string;
-  recipients: Array<string>;
+  recipients: string[];
   message: string;
   subject: string;
 }

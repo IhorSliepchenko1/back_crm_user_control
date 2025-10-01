@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsArray,
   IsOptional,
@@ -23,5 +24,6 @@ export class CreateTaskDto {
 
   @IsArray({ message: 'Передайте массив пользователей' })
   @IsUUID('4', { each: true })
+  @Transform(({ value }) => JSON.parse(value))
   executors: string[];
 }

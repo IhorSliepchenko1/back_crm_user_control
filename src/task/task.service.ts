@@ -17,7 +17,6 @@ import { UpdateTaskCreatorDto } from './dto/update-task-creator.dto';
 import { UpdateTaskExecutorDto } from './dto/update-task-executor.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UsersService } from 'src/users/users.service';
-import { ProjectsService } from 'src/project/projects.service';
 import { PaginationTaskDto } from './dto/pagination-task.dto';
 
 @Injectable()
@@ -25,7 +24,6 @@ export class TaskService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly uploadsService: UploadsService,
-    private readonly projectsService: ProjectsService,
     private eventEmitter: EventEmitter2,
     private readonly userService: UsersService,
   ) {}
@@ -34,7 +32,7 @@ export class TaskService {
     dto: CreateTaskDto,
     projectId: string,
     req: Request,
-    files: Array<Express.Multer.File>,
+    files?: Array<Express.Multer.File>,
   ) {
     const { id: creatorId } = req.user as JwtPayload;
 
@@ -65,6 +63,7 @@ export class TaskService {
     }
 
     const { name, deadline, taskDescription, executors } = dto;
+
     const participants = project.participants.map((p) => p.id);
     const isAccess = executors.some((id) => !participants.includes(id));
 
@@ -95,7 +94,7 @@ export class TaskService {
     return buildResponse('Новая задача добавлена');
   }
   private async saveFiles(
-    filePathTask: Array<string>,
+    filePathTask: string[],
     taskId: string,
     type: 'filePathTask' | 'filePathExecutor',
   ) {
@@ -244,7 +243,7 @@ export class TaskService {
     return task;
   }
   private async taskChangeExecutors(
-    arrayId: Array<string>,
+    arrayId: string[],
     taskId: string,
     key: 'connect' | 'disconnect',
   ) {
@@ -391,7 +390,7 @@ export class TaskService {
     });
 
     const { message, subject } = dto;
-    const arrayRecipients: Array<string> = [];
+    const arrayRecipients: string[] = [];
 
     recipients.forEach((id) => {
       arrayRecipients.push(id);
