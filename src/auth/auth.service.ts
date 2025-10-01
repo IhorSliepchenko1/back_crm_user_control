@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import type { Response, Request } from 'express';
+import type { Response } from 'express';
 import * as argon2 from 'argon2';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -25,6 +27,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
+    @Inject(forwardRef(() => UsersService))
     private readonly userService: UsersService,
   ) {}
 
@@ -128,7 +131,6 @@ export class AuthService {
 
     return this.tokenService.auth(res, payload, remember);
   }
-
   async findSession(userId: string) {
     const checkSession = await this.prismaService.refreshToken.findMany({
       where: {
@@ -148,7 +150,6 @@ export class AuthService {
     }
     return { exp: 0, now: 0 };
   }
-
   async validate(id: string): Promise<JwtPayload> {
     const userInfo = await this.userService.findUser(id);
 

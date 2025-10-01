@@ -6,26 +6,24 @@ import {
   HttpStatus,
   Param,
   Post,
-  Redirect,
   Req,
   Res,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Response, Request } from 'express';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { User } from './decorators/user.decorator';
 import { TokenService } from 'src/token/token.service';
-import type { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import { Auth } from './decorators/auth.decorator';
 import { AuthRoles } from './decorators/auth-roles.decorator';
+import { UsersService } from 'src/users/users.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly tokenService: TokenService,
+    private readonly usersService: UsersService,
   ) {}
 
   @AuthRoles('ADMIN')
@@ -55,20 +53,10 @@ export class AuthController {
   @Get('me')
   @HttpCode(HttpStatus.OK)
   async findOne(
-    @User() user: JwtPayload,
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
   ) {
-    const { roles, avatarPath, login } = user;
-    const { exp, now } = await this.authService.findSession(user.id);
-
-    await this.tokenService.validateToken(req, res);
-
-    if (exp < now) {
-      return await this.tokenService.logout(res, req, true);
-    }
-
-    return { roles, avatarPath, name: login };
+    return await this.usersService.me(req, res);
   }
 
   @AuthRoles('ADMIN')

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TokenService } from './token.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
@@ -12,7 +12,7 @@ import { UsersModule } from 'src/users/users.module';
       inject: [ConfigService],
       useFactory: getJwtConfig,
     }),
-    UsersModule,
+    forwardRef(() => UsersModule),
   ],
   providers: [TokenService],
   exports: [TokenService],

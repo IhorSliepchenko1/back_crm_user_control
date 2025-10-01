@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategy/jwt.strategy';
@@ -16,7 +16,7 @@ import { UsersModule } from 'src/users/users.module';
       useFactory: getJwtConfig,
     }),
     TokenModule,
-    UsersModule,
+    forwardRef(() => UsersModule),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
