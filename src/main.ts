@@ -23,7 +23,14 @@ async function bootstrap() {
     await fs.promises.mkdir(uploads, { recursive: true });
   }
 
-  app.useStaticAssets(uploads);
+  app.useStaticAssets(path.join(uploads, 'avatars'), {
+    prefix: '/avatars/',
+  });
+
+  // app.useStaticAssets(path.join(uploads, 'tasks'), {
+  //   prefix: '/avatars/',
+  // });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

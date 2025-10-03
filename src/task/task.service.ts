@@ -116,7 +116,6 @@ export class TaskService {
       ),
     );
   }
-
   private async taskData(id: string) {
     const task = await this.prismaService.task.findUnique({
       where: { id },
@@ -346,8 +345,6 @@ export class TaskService {
     req: Request,
   ) {
     const { id: senderId } = req.user as JwtPayload;
-    await this.userService.findUser(senderId);
-
     const task = await this.prismaService.task.findUnique({
       where: { id: taskId },
 
@@ -419,8 +416,6 @@ export class TaskService {
     req: Request,
   ) {
     const { id: creatorId } = req.user as JwtPayload;
-    await this.userService.findUser(creatorId);
-
     const task = await this.prismaService.task.findUnique({
       where: { id: taskId },
 
@@ -539,7 +534,6 @@ export class TaskService {
 
     return buildResponse('Список задач', { data });
   }
-
   async taskById(id: string, req: Request) {
     const { id: creatorId, roles } = req.user as JwtPayload;
     const task = await this.prismaService.task.findUnique({

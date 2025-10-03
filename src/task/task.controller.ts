@@ -30,7 +30,7 @@ export class TaskController {
   @Auth()
   @Post('create')
   @HttpCode(HttpStatus.CREATED)
-  @UseUploadFiles(5, 5)
+  @UseUploadFiles(5, 5, 'tasks')
   createTask(
     @Body() dto: CreateTaskDto,
     @Query('projectId') projectId: string,
@@ -43,7 +43,7 @@ export class TaskController {
   @Auth()
   @Put('update-creator/:id')
   @HttpCode(HttpStatus.OK)
-  @UseUploadFiles()
+  @UseUploadFiles(5, 5, 'tasks')
   updateTaskCreator(
     @Body() dto: UpdateTaskCreatorDto,
     @Param('id') id: string,
@@ -56,7 +56,7 @@ export class TaskController {
   @Auth()
   @Put('update-executor/:id')
   @HttpCode(HttpStatus.OK)
-  @UseUploadFiles()
+  @UseUploadFiles(5, 5, 'tasks')
   updateTaskExecutor(
     @Body() dto: UpdateTaskExecutorDto,
     @Param('id') id: string,

@@ -10,10 +10,12 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
+import { extname } from 'path';
 
 export function UploadFilesInterceptor(
   sizeMax: number,
   countFiles: number = 1,
+  folder: string,
   mimetypes?: string[],
 ): Type<NestInterceptor> {
   @Injectable()
@@ -22,23 +24,24 @@ export function UploadFilesInterceptor(
     constructor() {
       const InterceptorClass = FilesInterceptor('files', countFiles, {
         storage: diskStorage({
-          destination: './uploads',
+          destination: `./uploads/${folder}`,
           filename: (_req, file, cb) => {
             const uniqueSuffix = Date.now();
-            cb(null, `${uniqueSuffix}_${file.originalname}`);
+            cb(null, `${uniqueSuffix}_file${extname(file.originalname)}`);
           },
         }),
 
         limits: { fileSize: sizeMax * 1024 * 1024 },
 
         fileFilter: (_req, file, cb) => {
-          if (mimetypes && mimetypes.length) {
-            if (!mimetypes.includes(file.mimetype)) {
-              cb(new BadRequestException('Неподдерживаемый формат'), false);
-            }
-          } else {
-            cb(null, true);
+          if (
+            mimetypes &&
+            mimetypes.length &&
+            !mimetypes.includes(file.mimetype)
+          ) {
+            cb(new BadRequestException('Неподдерживаемый формат'), false);
           }
+          cb(null, true);
         },
       });
 

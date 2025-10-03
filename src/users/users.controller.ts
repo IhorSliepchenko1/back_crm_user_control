@@ -54,7 +54,7 @@ export class UsersController {
   @Auth()
   @Put('update-user/:id')
   @HttpCode(HttpStatus.OK)
-  @UseUploadFiles(1, 1, ['image/jpeg', 'image/png', 'image/webp'])
+  @UseUploadFiles(1, 1, 'avatars', ['image/jpeg', 'image/png', 'image/webp'])
   async updateUserById(
     @Body() dto: UpdateUserByIdDto,
     @Param('id') id: string,
@@ -70,6 +70,4 @@ export class UsersController {
   async usersForProject(@Req() req: Request) {
     return await this.usersService.usersForProject(req);
   }
-
-  
 }
