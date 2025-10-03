@@ -506,7 +506,7 @@ export class TaskService {
       this.prismaService.task.findMany({
         skip: (currentPage - 1) * pageSize,
         take: pageSize,
-        orderBy: { status: 'asc' },
+        orderBy: { deadline: 'asc' },
         where,
         select: {
           id: true,
@@ -548,7 +548,13 @@ export class TaskService {
       },
 
       select: {
-        executors: true,
+        name: true,
+        executors: {
+          select: {
+            id: true,
+            login: true,
+          },
+        },
         deadline: true,
         status: true,
         executorDescription: true,
@@ -563,6 +569,11 @@ export class TaskService {
         project: {
           select: {
             creatorId: true,
+            creator: {
+              select: {
+                login: true,
+              },
+            },
           },
         },
       },

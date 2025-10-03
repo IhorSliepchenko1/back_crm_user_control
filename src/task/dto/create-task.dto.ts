@@ -20,7 +20,7 @@ export class CreateTaskDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(2_500, { message: 'Максимальное к-во 2500 символов' })
+  @MaxLength(10_000, { message: 'Максимальное к-во 2500 символов' })
   taskDescription?: string;
 
   @IsArray({ message: 'Передайте массив пользователей' })
