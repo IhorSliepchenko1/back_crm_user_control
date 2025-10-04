@@ -18,6 +18,7 @@ import { UpdateTaskExecutorDto } from './dto/update-task-executor.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UsersService } from 'src/users/users.service';
 import { PaginationTaskDto } from './dto/pagination-task.dto';
+import { TaskStatus } from '@prisma/client';
 
 @Injectable()
 export class TaskService {
@@ -242,30 +243,11 @@ export class TaskService {
       await this.taskChangeExecutors(newExecutors, taskId, 'connect');
     }
 
-    // if (filesIdRemove) {
-    //   const newFilesRemove = filesIdRemove.filter((f) =>
-    //     currentFilesId.includes(taskId),
-    //   );
-
-    //   await this.prismaService.$transaction(
-    //     newFilesRemove.map((id) =>
-    //       this.prismaService.files.delete({
-    //         where: { id },
-    //       }),
-    //     ),
-    //   );
-    // }
-
     if (files) {
       const filePathTask = this.uploadsService.seveFiles(files);
       await this.saveFiles(filePathTask, task.id, 'filePathTask');
       message.push(`Добавлены новые файлы`);
     }
-
-    // if (status && status !== task.status) {
-    //   updateData.status = status;
-    //   message.push(`Смена статуса на - ${status}`);
-    // }
 
     await this.prismaService.task.update({
       where: { id: taskId },
@@ -390,6 +372,51 @@ export class TaskService {
     return buildResponse('Задача обновлена');
   }
 
+  async changeStatus(taskId: string, status: TaskStatus, req: Request) {
+    const { id: creatorId } = req.user as JwtPayload;
+    const task = await this.taskData(taskId);
+
+    if (!task) {
+      throw new NotFoundException('Задача не обнаружена');
+    }
+
+    if (creatorId !== task.project.creatorId) {
+      throw new ForbiddenException('У вас нет права доступа к задаче');
+    }
+
+    if (!Object.values(TaskStatus).includes(status)) {
+      throw new BadRequestException('Передано неизвестное значение');
+    }
+
+    if (status === task.status) {
+      throw new ConflictException('Имя статуса должно отличаться от текущего');
+    }
+
+    const recipients = [
+      ...task.executors.map((e) => e.id),
+      task.project.creatorId,
+    ];
+
+    await this.prismaService.task.update({
+      where: {
+        id: taskId,
+      },
+
+      data: {
+        status,
+      },
+    });
+
+    await this.eventEmitter.emitAsync('notification.send', {
+      taskId,
+      senderId: creatorId,
+      recipients,
+      subject: `Внесены изменения в задачу - '${task.name}'`,
+      message: `Статус был изменён на '${status}'`,
+    });
+
+    return buildResponse('Задача обновлена');
+  }
   async taskByProjectId(dto: PaginationTaskDto, req: Request) {
     const { page, limit, status, deadlineFrom, deadlineTo, projectId } = dto;
     const { id: creatorId, roles } = req.user as JwtPayload;

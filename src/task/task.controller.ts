@@ -100,4 +100,15 @@ export class TaskController {
   ) {
     return this.taskService.deleteFileTask(taskId, fileId, req);
   }
+
+  @Auth()
+  @Patch('change-status')
+  @HttpCode(HttpStatus.OK)
+  changeStatus(
+    @Query('taskId') taskId: string,
+    @Query('status') status: TaskStatus,
+    @Req() req: Request,
+  ) {
+    return this.taskService.changeStatus(taskId, status, req);
+  }
 }
