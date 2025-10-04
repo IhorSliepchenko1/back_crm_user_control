@@ -67,28 +67,6 @@ export class TaskController {
   }
 
   @Auth()
-  @Patch('send-review/:id')
-  @HttpCode(HttpStatus.OK)
-  sendReviewTask(
-    @Body() dto: SendNotificationMessageDto,
-    @Param('id') id: string,
-    @Req() req: Request,
-  ) {
-    return this.taskService.sendReviewTask(dto, id, req);
-  }
-
-  @Auth()
-  @Patch('task-verification/:id')
-  @HttpCode(HttpStatus.OK)
-  taskVerification(
-    @Body() dto: SendNotificationMessageDto,
-    @Param('id') id: string,
-    @Req() req: Request,
-  ) {
-    return this.taskService.taskVerification(dto, id, req);
-  }
-
-  @Auth()
   @Get('task-by-project')
   @HttpCode(HttpStatus.OK)
   taskByProjectId(

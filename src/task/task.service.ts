@@ -122,6 +122,7 @@ export class TaskService {
 
       select: {
         id: true,
+        status: true,
         executors: {
           select: {
             id: true,
@@ -194,6 +195,7 @@ export class TaskService {
       executorsAdd,
       executorsRemove,
       filesIdRemove,
+      status,
     } = dto;
 
     const updateData: Partial<UpdateTaskData> = {};
@@ -201,23 +203,22 @@ export class TaskService {
     const currentTaskDescription = task.taskDescription;
     const currentDeadline = new Date(task.deadline);
     const currentExecutors = task.executors.map((e) => e.id);
-    const currentFilesId = task.files.reduce<string[]>((acc, val) => {
-      if (val.type === 'filePathTask') {
-        acc.push(val.id);
-      }
-      return acc;
-    }, []);
+    const currentFilesId = task.files.map((f) => f.id);
+    let recipients = [creatorId, ...currentExecutors];
+    const message: string[] = [];
 
     if (creatorId !== task.project.creatorId) {
-      throw new ForbiddenException();
+      throw new ForbiddenException('У вас нет права доступа к задаче');
     }
 
     if (name && name !== currentName) {
       updateData.name = name;
+      message.push('Смена названия задачи');
     }
 
     if (taskDescription && taskDescription !== currentTaskDescription) {
       updateData.taskDescription = taskDescription;
+      message.push('Внесены изменения в описании к задаче');
     }
 
     if (deadline) {
@@ -225,6 +226,7 @@ export class TaskService {
 
       if (newDeadline !== currentDeadline) {
         updateData.deadline = deadline;
+        message.push('Изменённ срок сдачи задачи');
       }
     }
 
@@ -233,6 +235,10 @@ export class TaskService {
         currentExecutors.includes(id),
       );
 
+      recipients = recipients.filter((id) => !executorsRemove.includes(id));
+      message.push(
+        `Изменённ список исполнителей удалены - (${newExecutorsRemove.join(', ')})`,
+      );
       await this.taskChangeExecutors(newExecutorsRemove, taskId, 'disconnect');
     }
 
@@ -240,7 +246,10 @@ export class TaskService {
       const newExecutors = executorsAdd.filter(
         (id) => !currentExecutors.includes(id),
       );
-
+      recipients.push(...newExecutors);
+      message.push(
+        `Изменённ список исполнителей добавлены - (${newExecutors.join(', ')})`,
+      );
       await this.taskChangeExecutors(newExecutors, taskId, 'connect');
     }
 
@@ -261,11 +270,25 @@ export class TaskService {
     if (files) {
       const filePathTask = this.uploadsService.seveFiles(files);
       await this.saveFiles(filePathTask, task.id, 'filePathTask');
+      message.push(`Добавлены новые файлы`);
+    }
+
+    if (status && status !== task.status) {
+      updateData.status = status;
+      message.push(`Смена статуса на - ${status}`);
     }
 
     await this.prismaService.task.update({
       where: { id: taskId },
       data: { ...updateData },
+    });
+
+    await this.eventEmitter.emitAsync('notification.send', {
+      taskId,
+      senderId: creatorId,
+      recipients,
+      subject: `Внесены изменения в задачу - '${task.name}'`,
+      message: message.join('\n\n'),
     });
 
     return buildResponse('Задача обновлена');
@@ -276,56 +299,30 @@ export class TaskService {
     req: Request,
     files?: Array<Express.Multer.File>,
   ) {
-    const { id: executorId } = req.user as JwtPayload;
-    await this.userService.findUser(executorId);
+    const { id: executorId, login } = req.user as JwtPayload;
     const task = await this.taskData(taskId);
 
     if (!task) {
       throw new NotFoundException('Задача не обнаружена');
     }
 
-    const recipients = new Set([
+    if (task.status !== 'IN_PROGRESS') {
+      throw new ConflictException(
+        "Задача уже не в статусе 'в процессе', вы уже не можете вносить изменения",
+      );
+    }
+
+    const recipients = [
       ...task.executors.map((e) => e.id),
       task.project.creatorId,
-    ]);
+    ];
 
-    const isExecutor = recipients.has(executorId);
+    const isExecutor = recipients.includes(executorId);
 
     if (!isExecutor) {
-      throw new ForbiddenException();
+      throw new ForbiddenException('У вас нет права доступа к задаче');
     }
-    const { executorDescription, filesIdRemove } = dto;
-
-    const updateData: Partial<UpdateTaskData> = {};
-    const currentFilesId = task.files.reduce<string[]>((acc, val) => {
-      if (val.type === 'filePathExecutor') {
-        acc.push(val.id);
-      }
-      return acc;
-    }, []);
-
-    const currentExecutorDescription = task.executorDescription;
-
-    if (
-      executorDescription &&
-      executorDescription !== currentExecutorDescription
-    ) {
-      updateData.executorDescription = executorDescription;
-    }
-
-    if (filesIdRemove) {
-      const newFilesRemove = filesIdRemove.filter((id) =>
-        currentFilesId.includes(id),
-      );
-
-      await this.prismaService.$transaction(
-        newFilesRemove.map((id) =>
-          this.prismaService.files.delete({
-            where: { id },
-          }),
-        ),
-      );
-    }
+    const { executorDescription } = dto;
 
     if (files) {
       const filePathTask = this.uploadsService.seveFiles(files);
@@ -334,136 +331,18 @@ export class TaskService {
 
     await this.prismaService.task.update({
       where: { id: taskId },
-      data: { ...updateData },
+      data: { executorDescription, status: 'IN_REVIEW' },
+    });
+
+    await this.eventEmitter.emitAsync('notification.send', {
+      taskId,
+      senderId: executorId,
+      recipients,
+      subject: `Проверка выполнения задачи '${task.name}'`,
+      message: `Учатник задачи '${login}', прислал решение на проверку`,
     });
 
     return buildResponse('Задача обновлена');
-  }
-  async sendReviewTask(
-    dto: SendNotificationMessageDto,
-    taskId: string,
-    req: Request,
-  ) {
-    const { id: senderId } = req.user as JwtPayload;
-    const task = await this.prismaService.task.findUnique({
-      where: { id: taskId },
-
-      select: {
-        id: true,
-        executors: {
-          select: {
-            id: true,
-          },
-        },
-
-        status: true,
-        project: {
-          select: {
-            creatorId: true,
-          },
-        },
-      },
-    });
-
-    if (!task) {
-      throw new NotFoundException('Задача не обнаружена');
-    }
-
-    const recipients = new Set([
-      ...task.executors.map((e) => e.id),
-      task.project.creatorId,
-    ]);
-
-    const isExecutor = recipients.has(senderId);
-
-    if (!isExecutor) {
-      throw new ForbiddenException();
-    }
-
-    if (task.status === 'IN_REVIEW') {
-      throw new ConflictException(
-        'Задача на стадии проверки, повторная отправка отклонена!',
-      );
-    }
-
-    await this.prismaService.task.update({
-      where: { id: taskId },
-      data: {
-        status: 'IN_REVIEW',
-      },
-    });
-
-    const { message, subject } = dto;
-    const arrayRecipients: string[] = [];
-
-    recipients.forEach((id) => {
-      arrayRecipients.push(id);
-    });
-
-    await this.eventEmitter.emitAsync('notification.send', {
-      taskId: task.id,
-      senderId,
-      recipients: arrayRecipients,
-      message,
-      subject,
-    });
-
-    return buildResponse('Задача выслана на проверку');
-  }
-  async taskVerification(
-    dto: SendNotificationMessageDto,
-    taskId: string,
-    req: Request,
-  ) {
-    const { id: creatorId } = req.user as JwtPayload;
-    const task = await this.prismaService.task.findUnique({
-      where: { id: taskId },
-
-      select: {
-        id: true,
-        executors: {
-          select: {
-            id: true,
-          },
-        },
-
-        status: true,
-        project: {
-          select: {
-            creatorId: true,
-          },
-        },
-      },
-    });
-
-    if (!task) {
-      throw new NotFoundException('Задача не обнаружена');
-    }
-
-    if (creatorId !== task.project.creatorId) {
-      throw new ForbiddenException();
-    }
-
-    const recipients = task.executors.map((e) => e.id);
-
-    const { message, subject, status } = dto;
-
-    await this.prismaService.task.update({
-      where: { id: taskId },
-      data: {
-        status,
-      },
-    });
-
-    await this.eventEmitter.emitAsync('notification.send', {
-      taskId: task.id,
-      creatorId,
-      recipients,
-      message,
-      subject,
-    });
-
-    return buildResponse('Ответ по проверке задачи отравлен');
   }
   async taskByProjectId(dto: PaginationTaskDto, req: Request) {
     const { page, limit, status, deadlineFrom, deadlineTo, projectId } = dto;

@@ -1,3 +1,4 @@
+import { TaskStatus } from '@prisma/client';
 import {
   IsArray,
   IsOptional,
@@ -12,6 +13,10 @@ export class UpdateTaskCreatorDto {
   @IsString({ message: 'Название задачи - это строка' })
   @Length(5, 100, { message: 'Длина названия задачи 5-100 символов' })
   name: string;
+
+  @IsOptional()
+  @IsString({ message: 'Статус - это строка' })
+  status: TaskStatus;
 
   @IsOptional()
   @IsString({ message: 'deadline - это строка' })
