@@ -179,31 +179,20 @@ export class TaskService {
     files?: Array<Express.Multer.File>,
   ) {
     const { id: creatorId } = req.user as JwtPayload;
-
-    await this.userService.findUser(creatorId);
-
     const task = await this.taskData(taskId);
 
     if (!task) {
       throw new NotFoundException('Задача не обнаружена');
     }
 
-    const {
-      name,
-      deadline,
-      taskDescription,
-      executorsAdd,
-      executorsRemove,
-      filesIdRemove,
-      status,
-    } = dto;
+    const { name, deadline, taskDescription, executorsAdd, executorsRemove } =
+      dto;
 
     const updateData: Partial<UpdateTaskData> = {};
     const currentName = task.name;
     const currentTaskDescription = task.taskDescription;
     const currentDeadline = new Date(task.deadline);
     const currentExecutors = task.executors.map((e) => e.id);
-    const currentFilesId = task.files.map((f) => f.id);
     let recipients = [creatorId, ...currentExecutors];
     const message: string[] = [];
 
@@ -253,19 +242,19 @@ export class TaskService {
       await this.taskChangeExecutors(newExecutors, taskId, 'connect');
     }
 
-    if (filesIdRemove) {
-      const newFilesRemove = filesIdRemove.filter((f) =>
-        currentFilesId.includes(taskId),
-      );
+    // if (filesIdRemove) {
+    //   const newFilesRemove = filesIdRemove.filter((f) =>
+    //     currentFilesId.includes(taskId),
+    //   );
 
-      await this.prismaService.$transaction(
-        newFilesRemove.map((id) =>
-          this.prismaService.files.delete({
-            where: { id },
-          }),
-        ),
-      );
-    }
+    //   await this.prismaService.$transaction(
+    //     newFilesRemove.map((id) =>
+    //       this.prismaService.files.delete({
+    //         where: { id },
+    //       }),
+    //     ),
+    //   );
+    // }
 
     if (files) {
       const filePathTask = this.uploadsService.seveFiles(files);
@@ -273,10 +262,10 @@ export class TaskService {
       message.push(`Добавлены новые файлы`);
     }
 
-    if (status && status !== task.status) {
-      updateData.status = status;
-      message.push(`Смена статуса на - ${status}`);
-    }
+    // if (status && status !== task.status) {
+    //   updateData.status = status;
+    //   message.push(`Смена статуса на - ${status}`);
+    // }
 
     await this.prismaService.task.update({
       where: { id: taskId },
@@ -344,6 +333,63 @@ export class TaskService {
 
     return buildResponse('Задача обновлена');
   }
+
+  async deleteFileTask(taskId: string, fileId: string, req: Request) {
+    const { id: creatorId } = req.user as JwtPayload;
+    const task = await this.taskData(taskId);
+    let message = '';
+    if (!task) {
+      throw new NotFoundException('Задача не обнаружена');
+    }
+
+    if (creatorId !== task.project.creatorId) {
+      throw new ForbiddenException('У вас нет права доступа к задаче');
+    }
+
+    const currentFiles = task.files.find((f) => f.id === fileId);
+
+    if (!currentFiles) {
+      throw new NotFoundException('Вы передали несуществующий файл');
+    }
+
+    const recipients = [
+      ...task.executors.map((e) => e.id),
+      task.project.creatorId,
+    ];
+
+    if (currentFiles.type === 'filePathExecutor') {
+      await this.prismaService.task.update({
+        data: {
+          status: 'IN_PROGRESS',
+        },
+
+        where: {
+          id: taskId,
+        },
+      });
+
+      message = 'В задаче был сменён статус и удалён файл';
+    } else {
+      message = 'В задаче был удалён файл';
+    }
+
+    await this.prismaService.files.delete({
+      where: {
+        id: fileId,
+      },
+    });
+
+    await this.eventEmitter.emitAsync('notification.send', {
+      taskId,
+      senderId: creatorId,
+      recipients,
+      subject: `Внесены изменения в задачу - '${task.name}'`,
+      message,
+    });
+
+    return buildResponse('Задача обновлена');
+  }
+
   async taskByProjectId(dto: PaginationTaskDto, req: Request) {
     const { page, limit, status, deadlineFrom, deadlineTo, projectId } = dto;
     const { id: creatorId, roles } = req.user as JwtPayload;

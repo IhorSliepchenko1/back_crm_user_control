@@ -15,10 +15,6 @@ export class UpdateTaskCreatorDto {
   name: string;
 
   @IsOptional()
-  @IsString({ message: 'Статус - это строка' })
-  status: TaskStatus;
-
-  @IsOptional()
   @IsString({ message: 'deadline - это строка' })
   deadline: string;
   // "yyyy-mm-ddT00:00:00.000Z"
@@ -37,9 +33,4 @@ export class UpdateTaskCreatorDto {
   @IsArray({ message: 'Передайте массив пользователей' })
   @IsUUID('4', { each: true })
   executorsRemove: string[];
-
-  @IsOptional()
-  @IsArray({ message: 'Передайте массив файлов для удаления' })
-  @IsUUID('4', { each: true })
-  filesIdRemove: string[];
 }

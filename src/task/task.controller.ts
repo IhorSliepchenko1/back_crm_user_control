@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -87,5 +88,16 @@ export class TaskController {
   @HttpCode(HttpStatus.OK)
   taskById(@Param('id') id: string, @Req() req: Request) {
     return this.taskService.taskById(id, req);
+  }
+
+  @Auth()
+  @Delete('file-delete')
+  @HttpCode(HttpStatus.OK)
+  deleteFileTask(
+    @Query('taskId') taskId: string,
+    @Query('fileId') fileId: string,
+    @Req() req: Request,
+  ) {
+    return this.taskService.deleteFileTask(taskId, fileId, req);
   }
 }
