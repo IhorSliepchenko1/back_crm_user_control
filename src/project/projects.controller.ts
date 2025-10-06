@@ -73,6 +73,21 @@ export class ProjectsController {
   }
 
   @Auth()
+  @Get('projects-with-me')
+  @HttpCode(HttpStatus.OK)
+  async projectsByParticipantId(
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+    @Query('active', ParseBoolPipe) active: boolean,
+    @Req() req: Request,
+  ) {
+    return await this.projectService.projectsByParticipantId(
+      { page, limit, active },
+      req,
+    );
+  }
+
+  @Auth()
   @Get('project/:id')
   @HttpCode(HttpStatus.OK)
   async project(@Param('id') id: string, @Req() req: Request) {

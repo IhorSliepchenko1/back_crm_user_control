@@ -1,18 +1,15 @@
 generator client {
   provider = "prisma-client-js"
 }
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
 model User {
   id                String             @id @default(uuid())
   login             String             @unique
   password          String
   avatarPath        String?            @map("avatar_path")
-  chatsId           Chat[]
   createdProjects   Project[]
   projects          Project[]          @relation("participants_projects")
   refreshTokens     RefreshToken[]
@@ -27,7 +24,6 @@ model User {
 
   @@map("users")
 }
-
 model Role {
   id           String   @id @default(uuid())
   name         Roles    @unique
@@ -38,7 +34,6 @@ model Role {
 
   @@map("roles")
 }
-
 model RefreshToken {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
@@ -50,7 +45,6 @@ model RefreshToken {
 
   @@map("refresh_tokens")
 }
-
 model Project {
   id           String   @id @default(uuid())
   name         String
@@ -64,7 +58,6 @@ model Project {
 
   @@map("projects")
 }
-
 model Task {
   id              String     @id @default(uuid())
   name            String
@@ -87,7 +80,6 @@ model Task {
 
   @@map("tasks")
 }
-
 model Notification {
   id       String @id @default(uuid())
   subject  String
@@ -106,7 +98,6 @@ model Notification {
 
   @@map("notifications")
 }
-
 model NotificationRead {
   id             String       @id @default(uuid())
   isRead         Boolean      @default(false) @map("is_read")
@@ -119,7 +110,6 @@ model NotificationRead {
 
   @@map("notification_read")
 }
-
 model Files {
   id        String   @id @default(uuid())
   type      FileName
@@ -131,29 +121,14 @@ model Files {
 
   @@map("files")
 }
-
 enum FileName {
   filePathTask
   filePathExecutor
 }
-
-model Chat {
-  id        String   @id @default(uuid())
-  message   String
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id])
-  filePath  String?  @map("file_path")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("chats")
-}
-
 enum Roles {
   USER
   ADMIN
 }
-
 enum TaskStatus {
   IN_REVIEW
   IN_PROGRESS

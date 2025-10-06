@@ -352,7 +352,6 @@ export class UsersService {
 
     return buildResponse('Вы успешно сохранили новые данные');
   }
-
   async me(req: Request, res: Response) {
     const user = req.user as JwtPayload;
     const { roles, avatarPath, login } = user;

@@ -215,18 +215,15 @@ export class ProjectsService {
 
     return buildResponse('Статус проекта обновлён');
   }
-  async projects(dto: PaginationDto, req: Request) {
-    const { id: creatorId, roles } = req.user as JwtPayload;
-    const { page, limit, active, my } = dto;
+
+  private async getManyProjects(
+    where: any,
+    page: number,
+    limit: number,
+    active?: boolean,
+  ) {
     const currentPage = page ?? 1;
     const pageSize = limit ?? 10;
-
-    const isAdmin = roles.some((role) => role === 'ADMIN');
-
-    const where = {
-      active,
-      ...((!isAdmin || (my && isAdmin)) && { creatorId }),
-    };
 
     const [prevData, total] = await this.prismaService.$transaction([
       this.prismaService.project.findMany({
@@ -303,14 +300,26 @@ export class ProjectsService {
     });
     const count_pages = Math.ceil(total / limit);
 
-    const data = {
+    return {
       projects,
       total,
       count_pages,
       page,
       limit,
     };
+  }
 
+  async projects(dto: PaginationDto, req: Request) {
+    const { id: creatorId, roles } = req.user as JwtPayload;
+    const { page, limit, active, my } = dto;
+
+    const isAdmin = roles.some((role) => role === 'ADMIN');
+
+    const where = {
+      active,
+      ...((!isAdmin || (my && isAdmin)) && { creatorId }),
+    };
+    const data = await this.getManyProjects(where, page, limit, active);
     return buildResponse('Список проектов', { data });
   }
   async project(id: string, req: Request) {
@@ -332,7 +341,7 @@ export class ProjectsService {
             login: true,
           },
         },
-        tasks: {},
+        tasks: true,
       },
     });
 
@@ -350,5 +359,21 @@ export class ProjectsService {
     return buildResponse('Проект', {
       data: { project: data },
     });
+  }
+
+  async projectsByParticipantId(dto: PaginationDto, req: Request) {
+    const { id } = req.user as JwtPayload;
+    const { page, limit, active } = dto;
+
+    const where = {
+      active,
+      participants: {
+        some: {
+          id,
+        },
+      },
+    };
+    const data = await this.getManyProjects(where, page, limit, active);
+    return buildResponse('Список проектов', { data });
   }
 }
