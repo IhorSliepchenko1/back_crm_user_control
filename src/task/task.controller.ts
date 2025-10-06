@@ -100,6 +100,17 @@ export class TaskController {
   ) {
     return this.taskService.deleteFileTask(taskId, fileId, req);
   }
+// onClick={() => onSubmit(status, task.id)}
+  @Auth()
+  @Patch('remove-executor')
+  @HttpCode(HttpStatus.OK)
+  removeExecutor(
+    @Query('taskId') taskId: string,
+    @Query('executorId') executorId: string,
+    @Req() req: Request,
+  ) {
+    return this.taskService.removeExecutor(taskId, executorId, req);
+  }
 
   @Auth()
   @Patch('change-status')

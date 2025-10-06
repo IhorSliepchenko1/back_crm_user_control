@@ -1,4 +1,5 @@
 import { TaskStatus } from '@prisma/client';
+import { Transform } from 'class-transformer';
 import {
   IsArray,
   IsOptional,
@@ -27,10 +28,11 @@ export class UpdateTaskCreatorDto {
   @IsOptional()
   @IsArray({ message: 'Передайте массив пользователей' })
   @IsUUID('4', { each: true })
+  @Transform(({ value }) => JSON.parse(value))
   executorsAdd: string[];
 
-  @IsOptional()
-  @IsArray({ message: 'Передайте массив пользователей' })
-  @IsUUID('4', { each: true })
-  executorsRemove: string[];
+  // @IsOptional()
+  // @IsArray({ message: 'Передайте массив пользователей' })
+  // @IsUUID('4', { each: true })
+  // executorsRemove: string[];
 }

@@ -12,7 +12,6 @@ import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateTaskData } from './interfaces/update-task-data.interface';
 import { JwtPayload } from 'src/token/interfaces/jwt-payload.interface';
 import type { Request } from 'express';
-import { SendNotificationMessageDto } from '../notification/dto/send-notification-message.dto';
 import { UpdateTaskCreatorDto } from './dto/update-task-creator.dto';
 import { UpdateTaskExecutorDto } from './dto/update-task-executor.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -61,6 +60,10 @@ export class TaskService {
       throw new ForbiddenException(
         'Только куратор проекта может назначать задачи!',
       );
+    }
+
+    if (files && files.length > 5) {
+      throw new ConflictException('Максимально к-во файлов (5шт)');
     }
 
     const { name, deadline, taskDescription, executors } = dto;
@@ -127,6 +130,7 @@ export class TaskService {
         executors: {
           select: {
             id: true,
+            login: true,
           },
         },
 
@@ -136,6 +140,7 @@ export class TaskService {
         name: true,
         project: {
           select: {
+            id: true,
             creatorId: true,
           },
         },
@@ -186,8 +191,7 @@ export class TaskService {
       throw new NotFoundException('Задача не обнаружена');
     }
 
-    const { name, deadline, taskDescription, executorsAdd, executorsRemove } =
-      dto;
+    const { name, deadline, taskDescription, executorsAdd } = dto;
 
     const updateData: Partial<UpdateTaskData> = {};
     const currentName = task.name;
@@ -217,25 +221,24 @@ export class TaskService {
       if (newDeadline !== currentDeadline) {
         updateData.deadline = deadline;
         message.push('Изменённ срок сдачи задачи');
+      } else {
+        throw new ConflictException(
+          'Срок сдачи не может быть в прошедшем времени',
+        );
       }
-    }
-
-    if (executorsRemove) {
-      const newExecutorsRemove = executorsRemove.filter((id) =>
-        currentExecutors.includes(id),
-      );
-
-      recipients = recipients.filter((id) => !executorsRemove.includes(id));
-      message.push(
-        `Изменённ список исполнителей удалены - (${newExecutorsRemove.join(', ')})`,
-      );
-      await this.taskChangeExecutors(newExecutorsRemove, taskId, 'disconnect');
     }
 
     if (executorsAdd) {
       const newExecutors = executorsAdd.filter(
         (id) => !currentExecutors.includes(id),
       );
+
+      if (executorsAdd.length + currentExecutors.length > 5) {
+        throw new ConflictException(
+          'На задаче задействовано максимально к-во (5)',
+        );
+      }
+
       recipients.push(...newExecutors);
       message.push(
         `Изменённ список исполнителей добавлены - (${newExecutors.join(', ')})`,
@@ -244,6 +247,14 @@ export class TaskService {
     }
 
     if (files) {
+      if (
+        files.length +
+          task.files.filter((f) => f.type !== 'filePathExecutor').length >
+        5
+      ) {
+        throw new ConflictException('Максимально к-во файлов (5шт)');
+      }
+
       const filePathTask = this.uploadsService.seveFiles(files);
       await this.saveFiles(filePathTask, task.id, 'filePathTask');
       message.push(`Добавлены новые файлы`);
@@ -260,6 +271,39 @@ export class TaskService {
       recipients,
       subject: `Внесены изменения в задачу - '${task.name}'`,
       message: message.join('\n\n'),
+    });
+
+    return buildResponse('Задача обновлена');
+  }
+
+  async removeExecutor(taskId: string, executorId: string, req: Request) {
+    const { id: creatorId, login } = req.user as JwtPayload;
+    const task = await this.taskData(taskId);
+
+    if (!task) {
+      throw new NotFoundException('Задача не обнаружена');
+    }
+
+    if (creatorId !== task.project.creatorId) {
+      throw new ForbiddenException('У вас нет права доступа к задаче');
+    }
+
+    const executor = task.executors.find((e) => e.id === executorId);
+
+    if (!executor) {
+      new ConflictException('Данный пользователь не относится к задаче');
+    }
+
+    const currentExecutors = task.executors.map((e) => e.id);
+    let recipients = [creatorId, ...currentExecutors];
+
+    await this.taskChangeExecutors([executorId], taskId, 'disconnect');
+    await this.eventEmitter.emitAsync('notification.send', {
+      taskId,
+      senderId: creatorId,
+      recipients,
+      subject: `Внесены изменения в задачу - '${task.name}'`,
+      message: `Изменённ список исполнителей удалены - (${executor?.login})`,
     });
 
     return buildResponse('Задача обновлена');
@@ -296,6 +340,12 @@ export class TaskService {
     const { executorDescription } = dto;
 
     if (files) {
+      if (files.length > 5) {
+        console.log(files);
+
+        throw new ConflictException('Максимально к-во файлов (5шт)');
+      }
+
       const filePathTask = this.uploadsService.seveFiles(files);
       await this.saveFiles(filePathTask, task.id, 'filePathExecutor');
     }
@@ -315,7 +365,6 @@ export class TaskService {
 
     return buildResponse('Задача обновлена');
   }
-
   async deleteFileTask(taskId: string, fileId: string, req: Request) {
     const { id: creatorId } = req.user as JwtPayload;
     const task = await this.taskData(taskId);
@@ -371,7 +420,6 @@ export class TaskService {
 
     return buildResponse('Задача обновлена');
   }
-
   async changeStatus(taskId: string, status: TaskStatus, req: Request) {
     const { id: creatorId } = req.user as JwtPayload;
     const task = await this.taskData(taskId);
@@ -462,6 +510,7 @@ export class TaskService {
           deadline: true,
           executors: {
             select: {
+              id: true,
               login: true,
             },
           },
@@ -514,6 +563,7 @@ export class TaskService {
         },
         project: {
           select: {
+            id: true,
             creatorId: true,
             creator: {
               select: {
@@ -529,6 +579,26 @@ export class TaskService {
       throw new NotFoundException('Задача не обнаружена');
     }
 
+    const projectParticipants = await this.prismaService.project.findUnique({
+      where: {
+        id: task?.project.id,
+      },
+
+      select: {
+        participants: {
+          where: {
+            id: {
+              notIn: task.executors.map((e) => e.id),
+            },
+          },
+          select: {
+            login: true,
+            id: true,
+          },
+        },
+      },
+    });
+
     if (
       task.project.creatorId !== creatorId &&
       !task.executors.some((e) => e.id === creatorId) &&
@@ -537,6 +607,8 @@ export class TaskService {
       throw new ForbiddenException('У вас нет права доступа к задаче');
     }
 
-    return buildResponse('Задача', { data: task });
+    return buildResponse('Задача', {
+      data: { ...task, participants: projectParticipants?.participants },
+    });
   }
 }
