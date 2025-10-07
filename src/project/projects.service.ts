@@ -309,19 +309,6 @@ export class ProjectsService {
     };
   }
 
-  async projects(dto: PaginationDto, req: Request) {
-    const { id: creatorId, roles } = req.user as JwtPayload;
-    const { page, limit, active, my } = dto;
-
-    const isAdmin = roles.some((role) => role === 'ADMIN');
-
-    const where = {
-      active,
-      ...((!isAdmin || (my && isAdmin)) && { creatorId }),
-    };
-    const data = await this.getManyProjects(where, page, limit, active);
-    return buildResponse('Список проектов', { data });
-  }
   async project(id: string, req: Request) {
     const { id: creatorId, roles } = req.user as JwtPayload;
     const project = await this.prismaService.project.findUnique({
@@ -361,19 +348,33 @@ export class ProjectsService {
     });
   }
 
-  async projectsByParticipantId(dto: PaginationDto, req: Request) {
-    const { id } = req.user as JwtPayload;
-    const { page, limit, active } = dto;
+  async projects(dto: PaginationDto, req: Request) {
+    const { id: creatorId, roles } = req.user as JwtPayload;
+    const { page, limit, active, my } = dto;
+
+    const isAdmin = roles.some((role) => role === 'ADMIN');
 
     const where = {
       active,
+      ...((!isAdmin || (my && isAdmin)) && { creatorId }),
+    };
+    const data = await this.getManyProjects(where, page, limit, active);
+    return buildResponse('Список проектов', { data });
+  }
+
+  async projectsByParticipantId(dto: PaginationDto, req: Request) {
+    const { id } = req.user as JwtPayload;
+    const { page, limit, userId } = dto;
+
+    const where = {
+      active: true,
       participants: {
         some: {
-          id,
+          id: userId ? userId : id,
         },
       },
     };
-    const data = await this.getManyProjects(where, page, limit, active);
+    const data = await this.getManyProjects(where, page, limit);
     return buildResponse('Список проектов', { data });
   }
 }

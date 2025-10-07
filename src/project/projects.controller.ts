@@ -78,11 +78,11 @@ export class ProjectsController {
   async projectsByParticipantId(
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
-    @Query('active', ParseBoolPipe) active: boolean,
+    @Query('userId') userId: string,
     @Req() req: Request,
   ) {
     return await this.projectService.projectsByParticipantId(
-      { page, limit, active },
+      { page, limit, userId },
       req,
     );
   }

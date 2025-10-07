@@ -25,7 +25,6 @@ export class TaskService {
     private readonly prismaService: PrismaService,
     private readonly uploadsService: UploadsService,
     private eventEmitter: EventEmitter2,
-    private readonly userService: UsersService,
   ) {}
 
   async createTask(
@@ -34,7 +33,7 @@ export class TaskService {
     req: Request,
     files?: Array<Express.Multer.File>,
   ) {
-    const { id: creatorId } = req.user as JwtPayload;
+    const { id: creatorId, roles } = req.user as JwtPayload;
 
     const project = await this.prismaService.project.findUnique({
       where: {
@@ -55,8 +54,12 @@ export class TaskService {
     if (!project) {
       throw new NotFoundException('Проект не обнаружен');
     }
+    console.log(project.creatorId, creatorId);
 
-    if (project.creatorId !== creatorId) {
+    if (
+      project.creatorId !== creatorId &&
+      !roles.some((role) => role === 'ADMIN')
+    ) {
       throw new ForbiddenException(
         'Только куратор проекта может назначать задачи!',
       );
@@ -184,7 +187,7 @@ export class TaskService {
     req: Request,
     files?: Array<Express.Multer.File>,
   ) {
-    const { id: creatorId } = req.user as JwtPayload;
+    const { id: creatorId, roles } = req.user as JwtPayload;
     const task = await this.taskData(taskId);
 
     if (!task) {
@@ -201,7 +204,10 @@ export class TaskService {
     let recipients = [creatorId, ...currentExecutors];
     const message: string[] = [];
 
-    if (creatorId !== task.project.creatorId) {
+    if (
+      creatorId !== task.project.creatorId &&
+      !roles.some((role) => role === 'ADMIN')
+    ) {
       throw new ForbiddenException('У вас нет права доступа к задаче');
     }
 
@@ -277,14 +283,17 @@ export class TaskService {
   }
 
   async removeExecutor(taskId: string, executorId: string, req: Request) {
-    const { id: creatorId, login } = req.user as JwtPayload;
+    const { id: creatorId, roles } = req.user as JwtPayload;
     const task = await this.taskData(taskId);
 
     if (!task) {
       throw new NotFoundException('Задача не обнаружена');
     }
 
-    if (creatorId !== task.project.creatorId) {
+    if (
+      creatorId !== task.project.creatorId &&
+      !roles.some((role) => role === 'ADMIN')
+    ) {
       throw new ForbiddenException('У вас нет права доступа к задаче');
     }
 
@@ -366,14 +375,17 @@ export class TaskService {
     return buildResponse('Задача обновлена');
   }
   async deleteFileTask(taskId: string, fileId: string, req: Request) {
-    const { id: creatorId } = req.user as JwtPayload;
+    const { id: creatorId, roles } = req.user as JwtPayload;
     const task = await this.taskData(taskId);
     let message = '';
     if (!task) {
       throw new NotFoundException('Задача не обнаружена');
     }
 
-    if (creatorId !== task.project.creatorId) {
+    if (
+      creatorId !== task.project.creatorId &&
+      !roles.some((role) => role === 'ADMIN')
+    ) {
       throw new ForbiddenException('У вас нет права доступа к задаче');
     }
 
