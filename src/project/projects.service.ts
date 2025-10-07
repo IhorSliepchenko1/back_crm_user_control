@@ -215,7 +215,6 @@ export class ProjectsService {
 
     return buildResponse('Статус проекта обновлён');
   }
-
   private async getManyProjects(
     where: any,
     page: number,
@@ -308,7 +307,6 @@ export class ProjectsService {
       limit,
     };
   }
-
   async project(id: string, req: Request) {
     const { id: creatorId, roles } = req.user as JwtPayload;
     const project = await this.prismaService.project.findUnique({
@@ -335,7 +333,8 @@ export class ProjectsService {
     if (
       project &&
       !roles.some((role) => role === 'ADMIN') &&
-      creatorId !== project.creator.id
+      creatorId !== project.creator.id &&
+      !project.participants.some((p) => p.id === creatorId)
     ) {
       throw new ForbiddenException('Вам не доступен просмотр чужих проетов');
     }
@@ -347,7 +346,6 @@ export class ProjectsService {
       data: { project: data },
     });
   }
-
   async projects(dto: PaginationDto, req: Request) {
     const { id: creatorId, roles } = req.user as JwtPayload;
     const { page, limit, active, my } = dto;
@@ -361,7 +359,6 @@ export class ProjectsService {
     const data = await this.getManyProjects(where, page, limit, active);
     return buildResponse('Список проектов', { data });
   }
-
   async projectsByParticipantId(dto: PaginationDto, req: Request) {
     const { id } = req.user as JwtPayload;
     const { page, limit, userId } = dto;

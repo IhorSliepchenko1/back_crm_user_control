@@ -281,7 +281,6 @@ export class TaskService {
 
     return buildResponse('Задача обновлена');
   }
-
   async removeExecutor(taskId: string, executorId: string, req: Request) {
     const { id: creatorId, roles } = req.user as JwtPayload;
     const task = await this.taskData(taskId);
@@ -433,14 +432,17 @@ export class TaskService {
     return buildResponse('Задача обновлена');
   }
   async changeStatus(taskId: string, status: TaskStatus, req: Request) {
-    const { id: creatorId } = req.user as JwtPayload;
+    const { id: creatorId, roles } = req.user as JwtPayload;
     const task = await this.taskData(taskId);
 
     if (!task) {
       throw new NotFoundException('Задача не обнаружена');
     }
 
-    if (creatorId !== task.project.creatorId) {
+    if (
+      creatorId !== task.project.creatorId &&
+      !roles.some((role) => role === 'ADMIN')
+    ) {
       throw new ForbiddenException('У вас нет права доступа к задаче');
     }
 
@@ -489,9 +491,18 @@ export class TaskService {
       where: {
         id: projectId,
       },
+
+      select: {
+        creatorId: true,
+        participants: true,
+      },
     });
 
-    if (!isAdmin && isCreator?.creatorId !== creatorId) {
+    const isParticipants = isCreator?.participants.some(
+      (p) => p.id === creatorId,
+    );
+
+    if (!isAdmin && isCreator?.creatorId !== creatorId && !isParticipants) {
       throw new ForbiddenException(
         'Отказано в доступе. Вы можете просматривать эти задачи!',
       );
@@ -500,6 +511,15 @@ export class TaskService {
     const where = {
       projectId,
       ...(status && { status }),
+      ...(isParticipants &&
+        !isAdmin &&
+        isCreator?.creatorId !== creatorId && {
+          executors: {
+            some: {
+              id: creatorId,
+            },
+          },
+        }),
       ...(deadlineTo &&
         deadlineFrom && {
           deadline: {

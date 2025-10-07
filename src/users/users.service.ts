@@ -248,7 +248,7 @@ export class UsersService {
 
     const user = await this.findUser(id);
 
-    await this.prismaService.user.update({
+    const result = await this.prismaService.user.update({
       where: { id: user.id },
 
       data: {
@@ -256,6 +256,11 @@ export class UsersService {
       },
     });
 
+    
+    if (!result.active) {
+      console.log(result);
+      await this.tokenService.deactivateTokens(id);
+    }
     return buildResponse(
       `Пользователь '${user.login}' ${user.active ? 'заблокирован' : 'разблокирован'}`,
     );
@@ -297,7 +302,9 @@ export class UsersService {
     const user = await this.findUser(userId);
 
     if (!roles.includes('ADMIN') && userId !== myId) {
-      throw new ForbiddenException();
+      throw new ForbiddenException(
+        'У вас нет права доступа к изменениях в пользователях',
+      );
     }
 
     const { login, newPassword, oldPassword } = dto;
