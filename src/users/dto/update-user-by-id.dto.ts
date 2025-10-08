@@ -7,12 +7,12 @@ export class UpdateUserByIdDto {
   login?: string;
 
   @IsOptional()
-  @IsString()
-  @Length(5, 20)
+  @IsString({ message: 'Пароль - это строка' })
+  @Length(5, 20, { message: 'Длина от 5 до 20 символов' })
   newPassword?: string;
 
   @IsOptional()
-  @IsString()
-  @Length(5, 20)
+  @IsString({ message: 'Пароль - это строка' })
+  @Length(5, 20, { message: 'Длина от 5 до 20 символов' })
   oldPassword?: string;
 }

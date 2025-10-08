@@ -54,7 +54,6 @@ export class TaskService {
     if (!project) {
       throw new NotFoundException('Проект не обнаружен');
     }
-    console.log(project.creatorId, creatorId);
 
     if (
       project.creatorId !== creatorId &&

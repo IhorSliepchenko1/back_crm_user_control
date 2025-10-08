@@ -256,7 +256,6 @@ export class UsersService {
       },
     });
 
-    
     if (!result.active) {
       console.log(result);
       await this.tokenService.deactivateTokens(id);
@@ -299,14 +298,13 @@ export class UsersService {
       userId = myId;
     }
 
-    const user = await this.findUser(userId);
-
     if (!roles.includes('ADMIN') && userId !== myId) {
       throw new ForbiddenException(
         'У вас нет права доступа к изменениях в пользователях',
       );
     }
 
+    const user = await this.findUser(userId);
     const { login, newPassword, oldPassword } = dto;
     const data: { login?: string; password?: string; avatarPath?: string } = {};
 
@@ -368,6 +366,6 @@ export class UsersService {
       return await this.tokenService.logout(res, req, true);
     }
 
-    return { roles, avatarPath, name: login };
+    return { roles, avatarPath, name: login, userId: user.id };
   }
 }

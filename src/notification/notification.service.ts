@@ -109,7 +109,6 @@ export class NotificationService {
       limit,
     });
   }
-
   async countNoReadNotifications(req: Request) {
     const { id } = req.user as JwtPayload;
 
@@ -126,7 +125,6 @@ export class NotificationService {
       count,
     });
   }
-
   async readNotification(idNotification: string, req: Request) {
     const { id } = req.user as JwtPayload;
 
