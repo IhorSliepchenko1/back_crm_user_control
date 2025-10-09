@@ -2,13 +2,13 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import type { NotificationPayload } from './interfaces/notification-payload.interface';
-import { NotificationsGateway } from 'src/gateways/notification.gateway';
+import { AppGateway } from 'src/gateway/app.gateway';
 
 @Injectable()
 export class NotificationListener {
   constructor(
     private readonly prismaService: PrismaService,
-    private gateway: NotificationsGateway,
+    private appGateway: AppGateway,
   ) {}
 
   @OnEvent('notification.send')
@@ -40,10 +40,10 @@ export class NotificationListener {
 
     for (const userId of recipients) {
       if (senderId === userId) continue;
-
-      this.gateway.sendNotification(userId, {
+      this.appGateway.sendNotification(userId, {
         subject,
         message,
+        types: ['NOTIFICATION', 'TRIGGER_TASKS'],
       });
     }
 

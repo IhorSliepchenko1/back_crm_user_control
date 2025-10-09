@@ -16,4 +16,7 @@ export class PaginationDto {
 
   @IsOptional()
   userId?: string;
+
+  @IsOptional()
+  isRead?: boolean;
 }

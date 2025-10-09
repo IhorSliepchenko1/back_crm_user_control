@@ -45,6 +45,7 @@ export class UsersService {
         select: {
           id: true,
           login: true,
+          isOnline: true,
           avatarPath: true,
           createdAt: true,
           active: true,
@@ -103,6 +104,7 @@ export class UsersService {
         name: user.login,
         avatarPath: user.avatarPath,
         is_active: user.active,
+        is_online: user.isOnline,
         created_at: new Date(user.createdAt).toLocaleDateString(),
         creator_projects: user.createdProjects.length,
         participant_projects: user.projects.length,
@@ -134,6 +136,7 @@ export class UsersService {
       select: {
         id: true,
         login: true,
+        isOnline: true,
         createdAt: true,
         avatarPath: true,
         active: true,
@@ -193,6 +196,7 @@ export class UsersService {
 
     const data = [
       { title: 'id', value: user.id },
+      { title: 'online', value: user.isOnline },
       { title: 'имя', value: user.login },
       {
         title: 'роль',
@@ -253,10 +257,11 @@ export class UsersService {
 
       data: {
         active: !user.active,
+        ...(user.active && { isOnline: false }),
       },
     });
 
-    if (!result.active) {
+    if (user.active) {
       console.log(result);
       await this.tokenService.deactivateTokens(id);
     }

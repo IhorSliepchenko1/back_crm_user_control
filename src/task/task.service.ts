@@ -246,7 +246,7 @@ export class TaskService {
 
       recipients.push(...newExecutors);
       message.push(
-        `Изменённ список исполнителей добавлены - (${newExecutors.join(', ')})`,
+        `Изменённ список исполнителей добавлены`,
       );
       await this.taskChangeExecutors(newExecutors, taskId, 'connect');
     }
@@ -274,7 +274,7 @@ export class TaskService {
       taskId,
       senderId: creatorId,
       recipients,
-      subject: `Внесены изменения в задачу - '${task.name}'`,
+      subject: `Внесены изменения в задачу`,
       message: message.join('\n\n'),
     });
 
@@ -309,7 +309,7 @@ export class TaskService {
       taskId,
       senderId: creatorId,
       recipients,
-      subject: `Внесены изменения в задачу - '${task.name}'`,
+      subject: `Внесены изменения в задачу`,
       message: `Изменённ список исполнителей удалены - (${executor?.login})`,
     });
 
@@ -424,7 +424,7 @@ export class TaskService {
       taskId,
       senderId: creatorId,
       recipients,
-      subject: `Внесены изменения в задачу - '${task.name}'`,
+      subject: `Внесены изменения в задачу`,
       message,
     });
 
@@ -472,7 +472,7 @@ export class TaskService {
       taskId,
       senderId: creatorId,
       recipients,
-      subject: `Внесены изменения в задачу - '${task.name}'`,
+      subject: `Внесены изменения в задачу`,
       message: `Статус был изменён на '${status}'`,
     });
 

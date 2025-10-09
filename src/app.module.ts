@@ -14,7 +14,7 @@ import { TaskModule } from './task/task.module';
 import { NotificationModule } from './notification/notification.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { FilesModule } from './files/files.module';
-import { GatewaysModule } from './gateways/gateways.module';
+import { AppGateway } from './gateway/app.gateway';
 
 @Module({
   imports: [
@@ -33,11 +33,10 @@ import { GatewaysModule } from './gateways/gateways.module';
     TaskModule,
     NotificationModule,
     FilesModule,
-    GatewaysModule,
   ],
 
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, AppGateway],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

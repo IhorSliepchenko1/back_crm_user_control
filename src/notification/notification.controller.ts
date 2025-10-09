@@ -4,6 +4,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseBoolPipe,
   ParseIntPipe,
   Patch,
   Query,
@@ -20,21 +21,16 @@ export class NotificationController {
   @Get('all')
   @HttpCode(HttpStatus.OK)
   currentUserNotifications(
+    @Req() req: Request,
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
-    @Req() req: Request,
+    @Query('isRead', ParseBoolPipe) isRead: boolean,
   ) {
-    return this.notificationService.currentUserNotifications(
-      { page, limit },
-      req,
-    );
-  }
-
-  @Auth()
-  @Get('count-no-read')
-  @HttpCode(HttpStatus.OK)
-  countNoReadNotifications(@Req() req: Request) {
-    return this.notificationService.countNoReadNotifications(req);
+    return this.notificationService.currentUserNotifications(req, {
+      page,
+      limit,
+      isRead,
+    });
   }
 
   @Auth()
