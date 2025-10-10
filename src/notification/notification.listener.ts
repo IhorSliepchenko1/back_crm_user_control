@@ -38,12 +38,24 @@ export class NotificationListener {
       ),
     );
 
+    const projectId = await this.prismaService.project.findFirst({
+      where: {
+        tasks: {
+          some: {
+            id: taskId,
+          },
+        },
+      },
+    });
+
     for (const userId of recipients) {
       if (senderId === userId) continue;
       this.appGateway.sendNotification(userId, {
         subject,
         message,
-        types: ['NOTIFICATION', 'TRIGGER_TASKS'],
+        taskId,
+        projectId: projectId?.id,
+        // types: ['NOTIFICATION', 'TRIGGER_TASKS'],
       });
     }
 

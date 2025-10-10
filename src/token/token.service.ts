@@ -157,6 +157,16 @@ export class TokenService {
       });
     }
 
+    await this.prismaService.user.update({
+      where: {
+        id,
+      },
+
+      data: {
+        isOnline: false,
+      },
+    });
+
     return true;
   }
 

@@ -15,7 +15,6 @@ import type { Request } from 'express';
 import { UpdateTaskCreatorDto } from './dto/update-task-creator.dto';
 import { UpdateTaskExecutorDto } from './dto/update-task-executor.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { UsersService } from 'src/users/users.service';
 import { PaginationTaskDto } from './dto/pagination-task.dto';
 import { TaskStatus } from '@prisma/client';
 
@@ -102,6 +101,14 @@ export class TaskService {
       const filePathTask = this.uploadsService.seveFiles(files);
       await this.saveFiles(filePathTask, task.id, 'filePathTask');
     }
+
+    await this.eventEmitter.emitAsync('notification.send', {
+      taskId: task.id,
+      senderId: creatorId,
+      recipients: executors,
+      subject: 'Новая задача',
+      message: 'Вы были назначены исполнителем задачи',
+    });
 
     return buildResponse('Новая задача добавлена');
   }
@@ -245,9 +252,7 @@ export class TaskService {
       }
 
       recipients.push(...newExecutors);
-      message.push(
-        `Изменённ список исполнителей добавлены`,
-      );
+      message.push(`Изменённ список исполнителей добавлены`);
       await this.taskChangeExecutors(newExecutors, taskId, 'connect');
     }
 

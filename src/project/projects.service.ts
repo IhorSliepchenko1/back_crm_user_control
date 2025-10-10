@@ -42,7 +42,7 @@ export class ProjectsService {
       );
     }
 
-    await this.prismaService.project.create({
+    const task = await this.prismaService.project.create({
       data: {
         name,
         creatorId,

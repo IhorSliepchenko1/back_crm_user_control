@@ -6,7 +6,6 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { setupSwagger } from './utils/swagger.utils';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -18,7 +17,6 @@ async function bootstrap() {
   app.use(cookieParser());
 
   const uploads = path.join(process.cwd(), 'uploads');
-
   if (!fs.existsSync(uploads)) {
     await fs.promises.mkdir(uploads, { recursive: true });
   }
@@ -27,21 +25,13 @@ async function bootstrap() {
     prefix: '/avatars/',
   });
 
-  // app.useStaticAssets(path.join(uploads, 'tasks'), {
-  //   prefix: '/avatars/',
-  // });
-
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
       transform: true,
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
-
   const PORT = process.env.PORT ?? 3000;
-
-  setupSwagger(app);
   await app.listen(PORT);
 }
 bootstrap();

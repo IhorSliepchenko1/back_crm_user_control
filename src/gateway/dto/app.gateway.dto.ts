@@ -1,12 +1,9 @@
-type TypeGateway =
-  | 'NOTIFICATION'
-  | 'LOGOUT'
-  | 'TRIGGER_USERS'
-  | 'TRIGGER_TASKS'
-  | 'TRIGGER_PROJECTS';
+// type TypeGateway = 'NOTIFICATION' | 'TRIGGER_TASKS' ;
 
 export class AppGatewayDto {
   subject: string;
   message: string;
-  types: TypeGateway[];
+  // types: TypeGateway[];
+  taskId: string;
+  projectId?: string;
 }
