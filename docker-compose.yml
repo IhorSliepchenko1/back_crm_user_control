@@ -1,39 +1,61 @@
 version: '3.9'
 services:
+
+  # для БД
   db:
+    # образ с которого берём старт. цифра - версия базы
     image: postgres:14
+    # имя контейнера
     container_name: nest_db
+    # указываем что перезапуск совершается в любом случае, кроме ручного стопа контейнера
     restart: unless-stopped
+    # путь к env
     env_file:
       - .env
+    # создаём отдельный volumes для хранения базы вне контейнера
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # порты для БД
     ports:
       - "5432:5432"
   api:
+    # имя контейнера
     container_name: nest_api
+    # место откуда делаем сборку файлов
     build: .
+    # порты для работы
     ports:
       - "3000:3000"
+    # путь к env
     env_file:
       - .env
+    # устанавливаем зависимости (в данном случаи от БД, указываем её имя)
     depends_on:
       - db
+    # рестарт как выше у БД
     restart: unless-stopped
+    # команда для применения миграции призмы
     command: >
       sh -c "npx prisma migrate deploy &&
         npm run start:prod"
+    # указываем место хранения файлов
     volumes:
       - ./uploads:/app/uploads
 
   frontend:
+    # имя контейнера
     container_name: frontend
+    # место сборки
     build: ../frontend
+    # также рестарт
     restart: unless-stopped
+    # порты, для фронта и nginx
     ports:
-      - "5173:80"
+      - "80:80"
+    # зависимость от бєка
     depends_on:
       - api
 
+# объявляем полюме которым присвоили имя
 volumes:
   pgdata:
